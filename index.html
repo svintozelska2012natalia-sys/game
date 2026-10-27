@@ -3,792 +3,1274 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Roblox 2D Obby: Паркур та Друзі</title>
+    <title>Roblox 3D: Tower of Hell (16 Stages)</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js (3D Engine) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap');
-        
         * {
             font-family: 'Fredoka', sans-serif;
             user-select: none;
             -webkit-user-select: none;
-        }
-
-        #gameCanvas {
-            background: linear-gradient(to bottom, #38bdf8, #818cf8);
             touch-action: none;
         }
-
+        body {
+            background-color: #05070d;
+            color: #ffffff;
+            overflow: hidden;
+        }
+        .glass-panel {
+            background: rgba(13, 18, 30, 0.88);
+            backdrop-filter: blur(14px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+        .btn-bounce:active {
+            transform: scale(0.94);
+        }
         ::-webkit-scrollbar {
             width: 6px;
         }
         ::-webkit-scrollbar-track {
-            background: rgba(0, 0, 0, 0.2);
+            background: rgba(0, 0, 0, 0.3);
             border-radius: 4px;
         }
         ::-webkit-scrollbar-thumb {
-            background: #3b82f6;
+            background: #e11d48;
             border-radius: 4px;
         }
-
-        .btn-bounce:active {
-            transform: scale(0.95);
+        .neon-title {
+            text-shadow: 0 0 15px rgba(225, 29, 72, 0.7);
         }
-
-        .chat-bubble {
-            animation: fadeIn 0.3s ease-out;
+        /* Mobile Controls Styling */
+        .touch-btn {
+            background: rgba(15, 23, 42, 0.8);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(8px);
         }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(5px); }
-            to { opacity: 1; transform: translateY(0); }
+        .touch-btn:active {
+            background: rgba(225, 29, 72, 0.9);
+            border-color: #ffffff;
         }
     </style>
 </head>
-<body class="bg-slate-900 text-white overflow-hidden h-screen w-screen flex flex-col">
+<body class="h-screen w-screen flex flex-col justify-between select-none">
 
-    <!-- TOP BAR / NAVIGATION -->
-    <header class="bg-slate-800/95 backdrop-blur-md border-b border-slate-700 h-14 px-4 flex items-center justify-between z-20 shrink-0">
+    <!-- REGISTRATION MODAL -->
+    <div id="authScreen" class="fixed inset-0 z-50 bg-slate-950/95 flex items-center justify-center p-4">
+        <div class="glass-panel rounded-3xl max-w-md w-full p-6 sm:p-8 border border-slate-800 shadow-2xl flex flex-col gap-6">
+            <div class="text-center">
+                <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-tr from-pink-600 to-rose-500 shadow-lg shadow-rose-500/40 mb-3 text-3xl">
+                    🏰
+                </div>
+                <h1 class="text-3xl font-extrabold tracking-wider text-white neon-title">TOWER OF HELL 3D</h1>
+                <p class="text-xs text-slate-400 mt-1">Реєстрація гравця та вибір собачки (16 Рівнів)</p>
+            </div>
+
+            <form id="authForm" onsubmit="handleAuth(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1">Нікнейм гравця</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-user absolute left-3.5 top-3 text-slate-500 text-sm"></i>
+                        <input type="text" id="usernameInput" required minlength="3" maxlength="15" placeholder="Введіть нікнейм..." class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 pl-10 pr-4 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 transition">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-2">Обери Персонажа-Собачку</label>
+                    <div class="grid grid-cols-3 gap-3" id="authAvatarGrid"></div>
+                </div>
+
+                <button type="submit" class="w-full bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 text-white font-bold py-3 rounded-xl shadow-lg shadow-rose-600/30 transition btn-bounce text-sm flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-play"></i> Зареєструватися та Грати
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MAIN HUD HEADER -->
+    <header class="glass-panel h-14 px-4 flex items-center justify-between z-20 shrink-0 border-b border-slate-800">
         <div class="flex items-center gap-3">
-            <div class="bg-gradient-to-tr from-red-500 to-orange-500 w-9 h-9 rounded-lg flex items-center justify-center font-bold text-xl shadow-lg transform rotate-3">
-                R
+            <span class="text-2xl">🏰</span>
+            <div>
+                <div class="font-extrabold text-sm sm:text-base tracking-wide text-rose-500 flex items-center gap-2">
+                    TOWER OF HELL 3D
+                </div>
+                <div class="text-[10px] text-slate-400 hidden sm:block">
+                    Гравець: <span id="hudUsername" class="text-slate-200 font-semibold">--</span>
+                </div>
             </div>
-            <span class="font-bold text-lg sm:text-xl tracking-wide hidden sm:inline text-slate-100">Roblox 2D Obby Parkour</span>
         </div>
 
-        <!-- Current Server & Level Stats -->
-        <div class="flex items-center gap-3 bg-slate-900/70 px-3 py-1.5 rounded-full border border-slate-700/60 text-xs sm:text-sm">
-            <div class="flex items-center gap-2">
-                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span id="currentServerLabel" class="font-semibold text-emerald-400">Server #1 (Easy Obby)</span>
+        <!-- STATS & TIMER -->
+        <div class="flex items-center gap-2 sm:gap-4 bg-slate-950/80 px-3 py-1.5 rounded-full border border-slate-800 text-xs sm:text-sm">
+            <div class="flex items-center gap-1.5 text-rose-400 font-bold">
+                <i class="fa-solid fa-clock"></i>
+                <span id="roundTimer">10:00</span>
             </div>
-            <div class="h-4 w-[1px] bg-slate-700"></div>
-            <div class="flex items-center gap-1 font-bold text-orange-400">
+            <div class="h-4 w-[1px] bg-slate-800"></div>
+            <div class="flex items-center gap-1.5 text-emerald-400 font-bold">
                 <i class="fa-solid fa-flag"></i>
-                <span>Етап: <span id="stageLabel">1</span></span>
+                <span id="checkpointText">Stage 1 / 16</span>
             </div>
-            <div class="h-4 w-[1px] bg-slate-700"></div>
-            <div class="flex items-center gap-1.5 text-yellow-400 font-bold">
-                <i class="fa-solid fa-star"></i>
-                <span id="starCount">0</span>
-            </div>
-            <div class="h-4 w-[1px] bg-slate-700"></div>
-            <div class="flex items-center gap-1.5 text-cyan-300 font-semibold font-mono">
-                <i class="fa-solid fa-stopwatch text-xs"></i>
-                <span id="timerLabel">00:00</span>
+            <div class="h-4 w-[1px] bg-slate-800"></div>
+            <div class="flex items-center gap-1 text-yellow-400 font-bold">
+                <i class="fa-solid fa-coins"></i>
+                <span id="coinCount">0</span>
             </div>
         </div>
 
-        <!-- Action Buttons -->
+        <!-- NAV BUTTONS -->
         <div class="flex items-center gap-2">
-            <button onclick="toggleModal('avatarModal')" class="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded-lg text-sm font-semibold flex items-center gap-2 transition btn-bounce">
-                <i class="fa-solid fa-user-gear text-purple-400"></i>
-                <span class="hidden md:inline">Персонаж</span>
+            <button onclick="toggleModal('shopModal')" class="bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 border border-amber-500/40 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition btn-bounce">
+                <i class="fa-solid fa-store"></i>
+                <span class="hidden md:inline">Магазин</span>
             </button>
-            <button onclick="toggleModal('friendsModal')" class="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded-lg text-sm font-semibold flex items-center gap-2 transition btn-bounce relative">
-                <i class="fa-solid fa-user-group text-blue-400"></i>
+            <button onclick="toggleModal('friendsModal')" class="bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border border-blue-500/40 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition btn-bounce relative">
+                <i class="fa-solid fa-users"></i>
                 <span class="hidden md:inline">Друзі</span>
-                <span id="onlineFriendsBadge" class="absolute -top-1 -right-1 bg-blue-500 text-xs text-white rounded-full w-4 h-4 flex items-center justify-center font-bold">2</span>
+                <span id="friendsBadge" class="bg-blue-500 text-white rounded-full w-4 h-4 text-[10px] flex items-center justify-center font-bold">3</span>
             </button>
-            <button onclick="toggleModal('serversModal')" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-sm font-semibold flex items-center gap-2 transition btn-bounce shadow-md shadow-blue-600/30">
-                <i class="fa-solid fa-server"></i>
-                <span class="hidden md:inline">Сервери</span>
+            <button onclick="toggleModal('serversModal')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition btn-bounce">
+                <i class="fa-solid fa-server text-rose-400"></i>
+                <span class="hidden md:inline" id="hudServerName">Easy Obby #1</span>
             </button>
         </div>
     </header>
 
-    <!-- MAIN GAME AREA -->
-    <div class="relative flex-1 w-full overflow-hidden">
-
-        <!-- Canvas Game Window -->
-        <canvas id="gameCanvas" class="w-full h-full block cursor-crosshair"></canvas>
-
-        <!-- TOP RIGHT: ONLINE PLAYERS LEADERBOARD -->
-        <div class="absolute top-4 right-4 bg-slate-900/80 backdrop-blur-md border border-slate-700/80 rounded-xl p-3 w-48 sm:w-56 text-xs shadow-xl hidden sm:block">
-            <div class="flex justify-between items-center mb-2 pb-1 border-b border-slate-700/60 font-bold text-slate-300">
-                <span>Гравці в Obby</span>
-                <span id="playerCountLabel" class="text-blue-400">1/8</span>
-            </div>
-            <ul id="serverPlayersList" class="space-y-1.5 max-h-40 overflow-y-auto pr-1">
-                <!-- Dynamic Player Rows -->
-            </ul>
+    <!-- 3D CANVAS & OVERLAYS -->
+    <div id="canvasContainer" class="relative flex-1 w-full overflow-hidden">
+        <!-- HEIGHT PROGRESS BAR -->
+        <div class="absolute right-4 top-1/2 -translate-y-1/2 h-64 w-4 bg-slate-950/80 rounded-full border border-slate-800 overflow-hidden flex flex-col justify-end p-0.5 z-10">
+            <div id="towerProgressBar" class="w-full bg-gradient-to-t from-rose-600 via-amber-400 to-emerald-400 rounded-full transition-all duration-200" style="height: 0%;"></div>
         </div>
 
-        <!-- BOTTOM LEFT: CHAT & EMOTES -->
+        <!-- CHAT & EMOTES -->
         <div class="absolute bottom-4 left-4 z-10 flex flex-col gap-2 max-w-xs sm:max-w-sm w-full">
-            <!-- Emote Bar -->
-            <div class="flex gap-2 bg-slate-900/80 backdrop-blur-md border border-slate-700/80 p-1.5 rounded-xl w-fit">
-                <button onclick="triggerEmote('👋 Паркур!')" class="hover:bg-slate-700/80 p-2 rounded-lg text-lg transition btn-bounce" title="Wave">👋</button>
-                <button onclick="triggerEmote('💃 Танець!')" class="hover:bg-slate-700/80 p-2 rounded-lg text-lg transition btn-bounce" title="Dance">💃</button>
-                <button onclick="triggerEmote('🦘 Легко!')" class="hover:bg-slate-700/80 p-2 rounded-lg text-lg transition btn-bounce" title="Easy">🦘</button>
-                <button onclick="triggerEmote('🔥 Паркур бог!')" class="hover:bg-slate-700/80 p-2 rounded-lg text-lg transition btn-bounce" title="Fire">🔥</button>
+            <div class="flex gap-1.5 glass-panel p-1.5 rounded-xl w-fit">
+                <button onclick="triggerEmote('👋 Привіт!')" class="hover:bg-slate-800 p-1.5 rounded-lg text-base transition btn-bounce">👋</button>
+                <button onclick="triggerEmote('😱 Впав!')" class="hover:bg-slate-800 p-1.5 rounded-lg text-base transition btn-bounce">😱</button>
+                <button onclick="triggerEmote('👑 Сцена 16!')" class="hover:bg-slate-800 p-1.5 rounded-lg text-base transition btn-bounce">👑</button>
+                <button onclick="triggerEmote('🔥 Паркур!')" class="hover:bg-slate-800 p-1.5 rounded-lg text-base transition btn-bounce">🔥</button>
             </div>
 
-            <!-- Chat Box -->
-            <div class="bg-slate-900/85 backdrop-blur-md border border-slate-700/80 rounded-xl p-2.5 shadow-2xl flex flex-col gap-2">
-                <div id="chatMessages" class="h-24 overflow-y-auto space-y-1 text-xs text-slate-200 pr-1 flex flex-col-reverse">
-                    <!-- Chat Messages Go Here -->
-                </div>
-                <form id="chatForm" onsubmit="sendChatMessage(event)" class="flex gap-2">
-                    <input type="text" id="chatInput" placeholder="Напишіть у чат паркуру..." class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500 flex-1">
-                    <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition">
+            <div class="glass-panel rounded-2xl p-2.5 shadow-2xl flex flex-col gap-2 border border-slate-800">
+                <div id="chatMessages" class="h-20 overflow-y-auto space-y-1 text-xs text-slate-300 pr-1 flex flex-col-reverse"></div>
+                <form onsubmit="sendChatMessage(event)" class="flex gap-2">
+                    <input type="text" id="chatInput" placeholder="Написати повідомлення..." class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-rose-500 flex-1">
+                    <button type="submit" class="bg-rose-600 hover:bg-rose-500 text-white px-3 py-1.5 rounded-xl text-xs font-bold transition">
                         <i class="fa-solid fa-paper-plane"></i>
                     </button>
                 </form>
             </div>
         </div>
 
-        <!-- TOUCH CONTROLS (Mobile Only) -->
-        <div class="absolute bottom-6 right-6 md:hidden z-10 flex gap-3 items-end opacity-90">
-            <button id="btnLeft" class="w-14 h-14 bg-slate-800/90 border-2 border-slate-600 text-white text-2xl rounded-2xl flex items-center justify-center active:bg-blue-600 shadow-lg"><i class="fa-solid fa-arrow-left"></i></button>
-            <button id="btnRight" class="w-14 h-14 bg-slate-800/90 border-2 border-slate-600 text-white text-2xl rounded-2xl flex items-center justify-center active:bg-blue-600 shadow-lg"><i class="fa-solid fa-arrow-right"></i></button>
-            <button id="btnJump" class="w-16 h-16 bg-blue-600 border-2 border-blue-400 text-white text-2xl rounded-2xl flex items-center justify-center active:bg-blue-500 shadow-xl ml-2"><i class="fa-solid fa-angles-up"></i></button>
+        <!-- MOBILE TOUCH CONTROLS -->
+        <div id="mobileControls" class="absolute inset-0 z-20 pointer-events-none md:hidden flex justify-between items-end p-6">
+            <!-- VIRTUAL JOYSTICK CONTAINER -->
+            <div id="joystickContainer" class="pointer-events-auto relative w-32 h-32 rounded-full bg-slate-900/60 border-2 border-slate-700/80 backdrop-blur-sm flex items-center justify-center">
+                <div id="joystickKnob" class="w-14 h-14 rounded-full bg-rose-600/90 border border-rose-300 shadow-xl transition-transform"></div>
+            </div>
+
+            <!-- JUMP & SPRINT & ROTATE CAMERA BUTTONS -->
+            <div class="pointer-events-auto flex gap-3 items-end">
+                <button id="btnCamRotate" class="touch-btn w-12 h-12 rounded-2xl text-slate-200 text-lg flex items-center justify-center shadow-xl">
+                    <i class="fa-solid fa-rotate-right"></i>
+                </button>
+                <button id="btnSprint" class="touch-btn w-12 h-12 rounded-2xl text-amber-400 text-lg flex items-center justify-center shadow-xl">
+                    <i class="fa-solid fa-bolt"></i>
+                </button>
+                <button id="btnJump" class="touch-btn w-20 h-20 rounded-3xl bg-rose-600 text-white text-3xl flex items-center justify-center shadow-2xl">
+                    <i class="fa-solid fa-angles-up"></i>
+                </button>
+            </div>
         </div>
 
-        <!-- NOTIFICATION TOAST -->
-        <div id="toast" class="absolute top-6 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-4 py-2 rounded-xl shadow-xl border border-blue-400 font-semibold text-sm transition-all duration-300 opacity-0 pointer-events-none translate-y-[-10px] z-50">
+        <!-- TOUCH CAMERA SWIPE REGION -->
+        <div id="cameraTouchArea" class="absolute inset-0 z-0 md:hidden pointer-events-auto"></div>
+
+        <!-- TOAST NOTIFICATION -->
+        <div id="toast" class="absolute top-6 left-1/2 -translate-x-1/2 bg-rose-600 text-white px-4 py-2 rounded-xl shadow-2xl border border-rose-400 font-bold text-xs transition-all duration-300 opacity-0 pointer-events-none translate-y-[-10px] z-50">
             Повідомлення
         </div>
     </div>
 
-    <!-- MODAL: AVATAR SELECT -->
-    <div id="avatarModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 hidden flex items-center justify-center p-4">
-        <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
-            <button onclick="toggleModal('avatarModal')" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl">
+    <!-- MODAL: SHOP -->
+    <div id="shopModal" class="fixed inset-0 bg-black/75 backdrop-blur-md z-40 hidden flex items-center justify-center p-4">
+        <div class="glass-panel rounded-3xl max-w-md w-full p-6 shadow-2xl relative border border-slate-800">
+            <button onclick="toggleModal('shopModal')" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl">
                 <i class="fa-solid fa-xmark"></i>
             </button>
-            <h2 class="text-xl font-bold mb-1 text-slate-100">Обери Персонажа</h2>
-            <p class="text-xs text-slate-400 mb-4">Вибери героя для проходження паркуру</p>
+            <h2 class="text-xl font-extrabold mb-1 text-white flex items-center gap-2">
+                <i class="fa-solid fa-store text-amber-400"></i> Магазин Ефектів
+            </h2>
+            <p class="text-xs text-slate-400 mb-4">Покращуй характеристики собачки</p>
 
-            <div class="grid grid-cols-2 gap-3" id="avatarGrid">
-                <!-- Dynamic Character Cards -->
+            <div class="space-y-3">
+                <div class="flex items-center justify-between p-3 rounded-2xl bg-slate-900/80 border border-slate-800">
+                    <div class="flex items-center gap-3">
+                        <span class="text-2xl">⚡</span>
+                        <div>
+                            <div class="font-bold text-sm">Швидкість +40%</div>
+                            <div class="text-[11px] text-slate-400">Швидше пересування по блоках</div>
+                        </div>
+                    </div>
+                    <button onclick="buyMutator('speed', 20)" class="bg-amber-500 hover:bg-amber-400 text-slate-950 px-3 py-1.5 rounded-xl font-bold text-xs transition flex items-center gap-1">
+                        20 <i class="fa-solid fa-coins text-[10px]"></i>
+                    </button>
+                </div>
+
+                <div class="flex items-center justify-between p-3 rounded-2xl bg-slate-900/80 border border-slate-800">
+                    <div class="flex items-center gap-3">
+                        <span class="text-2xl">🦘</span>
+                        <div>
+                            <div class="font-bold text-sm">Супер Стрибок</div>
+                            <div class="text-[11px] text-slate-400">Вищий стрибок на 16 рівні</div>
+                        </div>
+                    </div>
+                    <button onclick="buyMutator('jump', 25)" class="bg-amber-500 hover:bg-amber-400 text-slate-950 px-3 py-1.5 rounded-xl font-bold text-xs transition flex items-center gap-1">
+                        25 <i class="fa-solid fa-coins text-[10px]"></i>
+                    </button>
+                </div>
+
+                <div class="flex items-center justify-between p-3 rounded-2xl bg-slate-900/80 border border-slate-800">
+                    <div class="flex items-center gap-3">
+                        <span class="text-2xl">✨</span>
+                        <div>
+                            <div class="font-bold text-sm">Райдужний Аура Слід</div>
+                            <div class="text-[11px] text-slate-400">3D кольорові іскри при бігу</div>
+                        </div>
+                    </div>
+                    <button onclick="buyMutator('trail', 40)" class="bg-amber-500 hover:bg-amber-400 text-slate-950 px-3 py-1.5 rounded-xl font-bold text-xs transition flex items-center gap-1">
+                        40 <i class="fa-solid fa-coins text-[10px]"></i>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- MODAL: FRIENDS -->
-    <div id="friendsModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 hidden flex items-center justify-center p-4">
-        <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+    <div id="friendsModal" class="fixed inset-0 bg-black/75 backdrop-blur-md z-40 hidden flex items-center justify-center p-4">
+        <div class="glass-panel rounded-3xl max-w-md w-full p-6 shadow-2xl relative border border-slate-800">
             <button onclick="toggleModal('friendsModal')" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl">
                 <i class="fa-solid fa-xmark"></i>
             </button>
-            <h2 class="text-xl font-bold mb-1 text-slate-100 flex items-center gap-2">
-                <i class="fa-solid fa-user-group text-blue-400"></i> Список Друзів
+            <h2 class="text-xl font-extrabold mb-1 text-white flex items-center gap-2">
+                <i class="fa-solid fa-users text-blue-400"></i> Список Друзів
             </h2>
-            <p class="text-xs text-slate-400 mb-4">Приєднуйся до друзів на їхні сервери Obby!</p>
+            <p class="text-xs text-slate-400 mb-4">Приєднуйся до друзів на серверах</p>
 
-            <!-- Add Friend Input -->
             <div class="flex gap-2 mb-4">
-                <input type="text" id="addFriendInput" placeholder="Ім'я друга..." class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500 flex-1">
-                <button onclick="addFriend()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-sm font-bold transition btn-bounce">
+                <input type="text" id="addFriendInput" placeholder="Нікнейм друга..." class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500 flex-1">
+                <button onclick="addFriend()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition btn-bounce">
                     Додати
                 </button>
             </div>
 
-            <!-- Friends List -->
-            <div id="friendsList" class="space-y-2 max-h-60 overflow-y-auto pr-1">
-                <!-- Dynamic Friends Items -->
-            </div>
+            <div id="friendsList" class="space-y-2 max-h-60 overflow-y-auto pr-1"></div>
         </div>
     </div>
 
     <!-- MODAL: SERVERS -->
-    <div id="serversModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 hidden flex items-center justify-center p-4">
-        <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+    <div id="serversModal" class="fixed inset-0 bg-black/75 backdrop-blur-md z-40 hidden flex items-center justify-center p-4">
+        <div class="glass-panel rounded-3xl max-w-md w-full p-6 shadow-2xl relative border border-slate-800">
             <button onclick="toggleModal('serversModal')" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl">
                 <i class="fa-solid fa-xmark"></i>
             </button>
-            <h2 class="text-xl font-bold mb-1 text-slate-100 flex items-center gap-2">
-                <i class="fa-solid fa-server text-emerald-400"></i> Сервери Паркуру (Obby)
+            <h2 class="text-xl font-extrabold mb-1 text-white flex items-center gap-2">
+                <i class="fa-solid fa-server text-rose-500"></i> Вибір Сервера
             </h2>
-            <p class="text-xs text-slate-400 mb-4">Обери рівень складності або режим</p>
+            <p class="text-xs text-slate-400 mb-4">Досліджуй вежі 3D</p>
 
-            <div id="serversList" class="space-y-3 max-h-64 overflow-y-auto pr-1">
-                <!-- Dynamic Servers List -->
-            </div>
+            <div id="serversList" class="space-y-2.5 max-h-64 overflow-y-auto pr-1"></div>
         </div>
     </div>
 
-    <!-- GAME LOGIC -->
     <script>
-        // --- CHARACTERS CONFIGURATION ---
+        // --- 1. CHARACTERS & CONFIG (3 DISTINCT 3D DOGS) ---
         const CHARACTERS = {
-            fibi: {
-                id: 'fibi',
-                name: 'Фібі',
-                role: 'Мила собачка 🐶',
-                color: '#ec4899', // Pink
-                icon: '🐶',
-                bgColor: 'bg-pink-500/20',
-                borderColor: 'border-pink-500'
-            },
-            doggy: {
-                id: 'doggy',
-                name: 'Собачка',
-                role: 'Песик Спот 🐕',
-                color: '#f97316', // Orange
-                icon: '🐕',
-                bgColor: 'bg-orange-500/20',
-                borderColor: 'border-orange-500'
-            },
-            blue: {
-                id: 'blue',
-                name: 'Блю',
-                role: 'Синій папуга 🦜',
-                color: '#3b82f6', // Blue
-                icon: '🦜',
-                bgColor: 'bg-blue-500/20',
-                borderColor: 'border-blue-500'
-            },
-            anya: {
-                id: 'anya',
-                name: 'Аня Іщук',
-                role: 'Топ блогерка 👑',
-                color: '#a855f7', // Purple
-                icon: '👑',
-                bgColor: 'bg-purple-500/20',
-                borderColor: 'border-purple-500'
-            }
+            fibi: { id: 'fibi', name: 'Собака Фібі', role: 'Golden Dog 🐶', color: 0xe29d52, collarColor: 0xd97706, badge: 'bone', icon: '🐶' },
+            blue: { id: 'blue', name: 'Собака Блю', role: 'Cyan Feather Dog 🦜', color: 0x03a9f4, collarColor: 0x0284c7, badge: 'beak', icon: '🦜' },
+            anya: { id: 'anya', name: 'Собака Аня Іщук', role: 'Magenta Crown Dog 👑', color: 0xe91e63, collarColor: 0xc2185b, badge: 'crown', icon: '👑' }
         };
 
-        // --- SERVERS CONFIGURATION ---
         const SERVERS = [
-            { id: 'server1', name: 'Server #1 (Easy Obby)', desc: 'Легкий паркур для початківців', max: 8, sky: ['#38bdf8', '#818cf8'] },
-            { id: 'server2', name: 'Server #2 (Hard Obby)', desc: 'Складні стрибки та рухомі лавові блоки', max: 8, sky: ['#f43f5e', '#881337'] },
-            { id: 'server3', name: 'Server #3 (Speedrun)', desc: 'Швидкісний режим із пружинами', max: 8, sky: ['#10b981', '#064e3b'] }
+            { id: 'server1', name: 'Easy Obby #1', desc: 'Стандартна вежа (16 рівнів)', max: 12 },
+            { id: 'server2', name: 'Pro Tower #2', desc: 'Складний паркур', max: 12 },
+            { id: 'server3', name: 'Speedrun Server #3', desc: 'Змагання на час', max: 12 }
         ];
 
-        // --- GAME STATE ---
+        // Global Game State
+        let selectedAuthChar = 'fibi';
         let currentServerId = 'server1';
-        let startTime = Date.now();
-        
-        // Physics Player
-        let player = {
-            x: 100,
-            y: 300,
-            vx: 0,
-            vy: 0,
-            width: 32,
-            height: 32,
-            speed: 5.5,
-            jumpPower: 12.5,
-            isGrounded: false,
+        let globalRoundSeconds = 600;
+        let roundTimerInterval = null;
+
+        let currentUser = {
+            username: '',
             character: 'fibi',
-            name: 'Гравець (Ти)',
-            stage: 1,
-            stars: 0,
-            checkpoint: { x: 100, y: 300 },
-            chatBubble: null,
-            chatTimer: null,
-            emote: null,
-            emoteTimer: null
+            coins: 0,
+            hasTrail: false,
+            speedMultiplier: 1.0,
+            jumpPowerMultiplier: 1.0,
+            currentCheckpointStage: 1
         };
 
-        // Camera Offset
-        let cameraX = 0;
-
-        // Simulated Friends Data
         let friends = [
-            { id: 'f1', name: 'Саша', character: 'blue', online: true, serverId: 'server2' },
-            { id: 'f2', name: 'Віка', character: 'anya', online: true, serverId: 'server1' },
-            { id: 'f3', name: 'Макс', character: 'doggy', online: true, serverId: 'server3' }
+            { id: 'f1', username: 'Макс_Pro', character: 'blue', online: true, serverId: 'server2', stage: 8 },
+            { id: 'f2', username: 'Софія_Vip', character: 'anya', online: true, serverId: 'server1', stage: 12 },
+            { id: 'f3', username: 'Артем_Dog', character: 'fibi', online: true, serverId: 'server3', stage: 4 }
         ];
 
-        // Other players on server
-        let otherPlayers = [
-            { id: 'p1', name: 'Віка', character: 'anya', serverId: 'server1', x: 450, y: 300 },
-            { id: 'p2', name: 'Саша', character: 'blue', serverId: 'server2', x: 600, y: 250 },
-            { id: 'p3', name: 'Макс', character: 'doggy', serverId: 'server3', x: 800, y: 200 }
-        ];
+        // Three.js Globals
+        let scene, camera, renderer;
+        let playerMesh, dogLegs = [];
+        let towerGroup, obstacleObjects = [], checkpointsList = [], coinsObjects = [];
+        let trailParticles = [];
+        let fireworksList = [];
 
-        // Controls
-        const keys = { left: false, right: false, jump: false };
+        // Physics State
+        let playerPos = new THREE.Vector3(0, 2, 0);
+        let playerVelocity = new THREE.Vector3(0, 0, 0);
+        let isGrounded = false;
+        let coyoteTimeCounter = 0;
+        let jumpBufferCounter = 0;
 
-        // Canvas Setup
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
+        let stageCheckpointsPos = {}; // Stage -> Vector3 spawn position
+        const TOWER_RADIUS = 12;
+        const STAGE_HEIGHT = 14;
+        const TOTAL_STAGES = 16;
+        const TOWER_MAX_HEIGHT = STAGE_HEIGHT * (TOTAL_STAGES + 1);
 
-        // Level Map Objects
-        let platforms = [];
-        let lavas = [];
-        let bouncers = [];
-        let checkpoints = [];
-        let collectibles = [];
+        // Camera Controls
+        let cameraAngleX = 0;
+        let cameraAngleY = 0.35;
+        let cameraDistance = 9;
+        let isMouseDown = false;
+        let previousMousePosition = { x: 0, y: 0 };
 
-        // --- INITIALIZATION ---
+        // Input state
+        const keys = { w: false, a: false, s: false, d: false, space: false, shift: false };
+        let joystickVector = { x: 0, y: 0 };
+
+        // --- 2. SYNTHESIZED AUDIO EFFECTS (Web Audio API) ---
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = null;
+
+        function playSound(type) {
+            try {
+                if (!audioCtx) audioCtx = new AudioCtx();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                const now = audioCtx.currentTime;
+
+                if (type === 'jump') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(160, now);
+                    osc.frequency.exponentialRampToValueAtTime(400, now + 0.15);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.15);
+                    osc.start(now);
+                    osc.stop(now + 0.15);
+                } else if (type === 'coin') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(800, now);
+                    osc.frequency.setValueAtTime(1200, now + 0.08);
+                    gain.gain.setValueAtTime(0.25, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.2);
+                    osc.start(now);
+                    osc.stop(now + 0.2);
+                } else if (type === 'bounce') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(250, now);
+                    osc.frequency.exponentialRampToValueAtTime(700, now + 0.25);
+                    gain.gain.setValueAtTime(0.3, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
+                    osc.start(now);
+                    osc.stop(now + 0.25);
+                } else if (type === 'lava') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(150, now);
+                    osc.frequency.linearRampToValueAtTime(60, now + 0.3);
+                    gain.gain.setValueAtTime(0.3, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
+                    osc.start(now);
+                    osc.stop(now + 0.3);
+                } else if (type === 'victory') {
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(400, now);
+                    osc.frequency.setValueAtTime(600, now + 0.1);
+                    osc.frequency.setValueAtTime(800, now + 0.2);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.5);
+                    osc.start(now);
+                    osc.stop(now + 0.5);
+                }
+            } catch (e) {}
+        }
+
+        // --- 3. GAME INITIALIZATION ---
         window.onload = () => {
-            resizeCanvas();
-            window.addEventListener('resize', resizeCanvas);
+            loadSavedUserData();
+            renderAuthAvatars();
+            init3DScene();
+            setupInputListeners();
+            setupMobileJoystick();
 
-            setupControls();
-            buildParkourCourse();
-            renderAvatarModal();
+            clearInterval(roundTimerInterval);
+            roundTimerInterval = setInterval(updateRoundTimer, 1000);
+        };
+
+        function loadSavedUserData() {
+            const saved = localStorage.getItem('toh_3d_user_v2');
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    currentUser = { ...currentUser, ...parsed };
+                    document.getElementById('usernameInput').value = currentUser.username || '';
+                    if (currentUser.character) selectedAuthChar = currentUser.character;
+                } catch(e) {}
+            }
+        }
+
+        function saveUserData() {
+            localStorage.setItem('toh_3d_user_v2', JSON.stringify(currentUser));
+        }
+
+        function renderAuthAvatars() {
+            const grid = document.getElementById('authAvatarGrid');
+            grid.innerHTML = '';
+            Object.values(CHARACTERS).forEach(char => {
+                const isSelected = selectedAuthChar === char.id;
+                const card = document.createElement('div');
+                card.className = `p-3 rounded-2xl border-2 cursor-pointer transition flex flex-col items-center gap-1 text-center ${isSelected ? 'border-rose-500 bg-rose-500/20 scale-105' : 'border-slate-800 bg-slate-900/60 hover:border-slate-700'}`;
+                card.onclick = () => {
+                    selectedAuthChar = char.id;
+                    renderAuthAvatars();
+                };
+                card.innerHTML = `
+                    <div class="text-3xl mb-1">${char.icon}</div>
+                    <div class="font-bold text-xs text-white">${char.name}</div>
+                    <div class="text-[9px] text-slate-400">${char.role}</div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function handleAuth(e) {
+            e.preventDefault();
+            const username = document.getElementById('usernameInput').value.trim();
+            if (!username) return;
+
+            currentUser.username = username;
+            currentUser.character = selectedAuthChar;
+            saveUserData();
+
+            document.getElementById('hudUsername').innerText = username;
+            document.getElementById('coinCount').innerText = currentUser.coins;
+            document.getElementById('authScreen').classList.add('hidden');
+
+            createPlayerDogMesh();
+            build16Stage3DTower();
+            respawnPlayerAtCheckpoint();
             renderFriendsModal();
             renderServersModal();
-            updateServerUI();
 
-            addChatMessage('Система', 'Ласкаво просимо в Roblox Obby! Проходь паркур та приєднуйся до друзів.', true);
-
-            requestAnimationFrame(gameLoop);
-        };
-
-        function resizeCanvas() {
-            canvas.width = canvas.parentElement.clientWidth;
-            canvas.height = canvas.parentElement.clientHeight;
+            addChatMessage('Система', `Ласкаво просимо у Вежу з 16 Рівнів, ${username}! 🐕`);
+            animate();
         }
 
-        // --- PARKOUR MAP GENERATOR ---
-        function buildParkourCourse() {
-            platforms = [];
-            lavas = [];
-            bouncers = [];
-            checkpoints = [];
-            collectibles = [];
+        // --- 4. THREE.JS SCENE SETUP ---
+        function init3DScene() {
+            const container = document.getElementById('canvasContainer');
 
-            let curX = 50;
-            let curY = 400;
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x05070d);
+            scene.fog = new THREE.FogExp2(0x05070d, 0.008);
 
-            // Spawn Platform
-            platforms.push({ x: curX, y: curY, w: 200, h: 30, color: '#475569' });
-            checkpoints.push({ x: curX + 80, y: curY - 40, stage: 1, active: true });
+            camera = new THREE.PerspectiveCamera(65, container.clientWidth / container.clientHeight, 0.1, 1000);
 
-            // Generate 10 Stages of Obby
-            for (let stage = 1; stage <= 10; stage++) {
-                curX += 220;
-                
-                // Varied parkour elements depending on stage
-                if (stage % 3 === 1) {
-                    // Moving platform & jump gap
-                    platforms.push({ x: curX, y: curY - 30, w: 100, h: 20, color: '#3b82f6', isMoving: true, startX: curX, range: 80, speed: 1.5, dir: 1 });
-                    curX += 160;
-                    platforms.push({ x: curX, y: curY - 60, w: 120, h: 20, color: '#3b82f6' });
-                } else if (stage % 3 === 2) {
-                    // Lava hurdle
-                    platforms.push({ x: curX, y: curY, w: 220, h: 20, color: '#475569' });
-                    lavas.push({ x: curX + 60, y: curY - 15, w: 100, h: 15 });
-                    curX += 120;
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+
+            const ambient = new THREE.AmbientLight(0xffffff, 0.65);
+            scene.add(ambient);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.85);
+            dirLight.position.set(25, 60, 25);
+            dirLight.castShadow = true;
+            scene.add(dirLight);
+
+            towerGroup = new THREE.Group();
+            scene.add(towerGroup);
+
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        // --- 5. DETAILED 3D DOG CHARACTER MESHES ---
+        function createPlayerDogMesh() {
+            if (playerMesh) scene.remove(playerMesh);
+
+            const char = CHARACTERS[currentUser.character] || CHARACTERS.fibi;
+            const dogGroup = new THREE.Group();
+            dogLegs = [];
+
+            // Body (Horizontal Cylinder / Rounded Capsule)
+            const bodyGeo = new THREE.CylinderGeometry(0.55, 0.55, 1.2, 16);
+            const dogMat = new THREE.MeshStandardMaterial({ color: char.color, roughness: 0.4 });
+            const body = new THREE.Mesh(bodyGeo, dogMat);
+            body.rotation.x = Math.PI / 2;
+            body.castShadow = true;
+            dogGroup.add(body);
+
+            // Dog Head
+            const headGeo = new THREE.SphereGeometry(0.5, 16, 16);
+            const head = new THREE.Mesh(headGeo, dogMat);
+            head.position.set(0, 0.45, 0.55);
+            dogGroup.add(head);
+
+            // Snout
+            const snoutGeo = new THREE.BoxGeometry(0.35, 0.3, 0.4);
+            const snoutMat = new THREE.MeshStandardMaterial({ color: 0xffedd5 });
+            const snout = new THREE.Mesh(snoutGeo, snoutMat);
+            snout.position.set(0, 0.35, 0.85);
+            dogGroup.add(snout);
+
+            // Nose
+            const noseGeo = new THREE.SphereGeometry(0.08, 12, 12);
+            const noseMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
+            const nose = new THREE.Mesh(noseGeo, noseMat);
+            nose.position.set(0, 0.45, 1.05);
+            dogGroup.add(nose);
+
+            // Ears (2 Drooping Ears)
+            const earGeo = new THREE.BoxGeometry(0.18, 0.45, 0.2);
+            const earMat = new THREE.MeshStandardMaterial({ color: 0x78350f });
+
+            const earL = new THREE.Mesh(earGeo, earMat);
+            earL.position.set(0.45, 0.5, 0.5);
+            earL.rotation.z = -0.3;
+            dogGroup.add(earL);
+
+            const earR = new THREE.Mesh(earGeo, earMat);
+            earR.position.set(-0.45, 0.5, 0.5);
+            earR.rotation.z = 0.3;
+            dogGroup.add(earR);
+
+            // Collar
+            const collarGeo = new THREE.TorusGeometry(0.48, 0.08, 12, 24);
+            const collarMat = new THREE.MeshStandardMaterial({ color: char.collarColor });
+            const collar = new THREE.Mesh(collarGeo, collarMat);
+            collar.rotation.x = Math.PI / 2;
+            collar.position.set(0, 0.25, 0.42);
+            dogGroup.add(collar);
+
+            // Special Collar Badges / Crowns per Character
+            if (char.badge === 'bone') {
+                const boneGeo = new THREE.BoxGeometry(0.2, 0.08, 0.08);
+                const boneMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+                const bone = new THREE.Mesh(boneGeo, boneMat);
+                bone.position.set(0, 0.18, 0.9);
+                dogGroup.add(bone);
+            } else if (char.badge === 'beak') {
+                const wingGeo = new THREE.BoxGeometry(0.05, 0.4, 0.6);
+                const wingMat = new THREE.MeshStandardMaterial({ color: 0x60a5fa });
+                const wingL = new THREE.Mesh(wingGeo, wingMat);
+                wingL.position.set(0.6, 0.2, 0);
+                dogGroup.add(wingL);
+                const wingR = new THREE.Mesh(wingGeo, wingMat);
+                wingR.position.set(-0.6, 0.2, 0);
+                dogGroup.add(wingR);
+            } else if (char.badge === 'crown') {
+                const crownGeo = new THREE.ConeGeometry(0.28, 0.3, 5);
+                const crownMat = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.8 });
+                const crown = new THREE.Mesh(crownGeo, crownMat);
+                crown.position.set(0, 0.95, 0.5);
+                dogGroup.add(crown);
+            }
+
+            // Tail
+            const tailGeo = new THREE.CylinderGeometry(0.08, 0.04, 0.5, 8);
+            const tail = new THREE.Mesh(tailGeo, dogMat);
+            tail.position.set(0, 0.4, -0.7);
+            tail.rotation.x = -0.6;
+            dogGroup.add(tail);
+
+            // 4 Legs
+            const legGeo = new THREE.CylinderGeometry(0.12, 0.1, 0.45, 8);
+            const legPositions = [
+                { x: 0.35, z: 0.35 }, { x: -0.35, z: 0.35 },
+                { x: 0.35, z: -0.35 }, { x: -0.35, z: -0.35 }
+            ];
+
+            legPositions.forEach(p => {
+                const leg = new THREE.Mesh(legGeo, dogMat);
+                leg.position.set(p.x, -0.35, p.z);
+                leg.castShadow = true;
+                dogGroup.add(leg);
+                dogLegs.push(leg);
+            });
+
+            playerMesh = dogGroup;
+            scene.add(playerMesh);
+        }
+
+        // --- 6. BUILD 16 WINNABLE 3D STAGES ---
+        function build16Stage3DTower() {
+            while (towerGroup.children.length > 0) {
+                towerGroup.remove(towerGroup.children[0]);
+            }
+            obstacleObjects = [];
+            checkpointsList = [];
+            coinsObjects = [];
+            stageCheckpointsPos = {};
+
+            // Transparent Outer Cylinder Shell
+            const shellGeo = new THREE.CylinderGeometry(TOWER_RADIUS + 0.5, TOWER_RADIUS + 0.5, TOWER_MAX_HEIGHT, 32, 1, true);
+            const shellMat = new THREE.MeshStandardMaterial({
+                color: 0x1e293b,
+                transparent: true,
+                opacity: 0.15,
+                side: THREE.DoubleSide
+            });
+            const shell = new THREE.Mesh(shellGeo, shellMat);
+            shell.position.y = TOWER_MAX_HEIGHT / 2;
+            towerGroup.add(shell);
+
+            // Core Support Axis
+            const coreGeo = new THREE.CylinderGeometry(0.5, 0.5, TOWER_MAX_HEIGHT, 16);
+            const coreMat = new THREE.MeshStandardMaterial({ color: 0x0f172a });
+            const core = new THREE.Mesh(coreGeo, coreMat);
+            core.position.y = TOWER_MAX_HEIGHT / 2;
+            towerGroup.add(core);
+
+            // Ground Safe Zone
+            const baseGeo = new THREE.CylinderGeometry(TOWER_RADIUS, TOWER_RADIUS, 2, 32);
+            const baseMat = new THREE.MeshStandardMaterial({ color: 0x334155 });
+            const base = new THREE.Mesh(baseGeo, baseMat);
+            base.position.y = 0;
+            base.receiveShadow = true;
+            towerGroup.add(base);
+            stageCheckpointsPos[1] = new THREE.Vector3(0, 1.5, 0);
+
+            const colors = [
+                0xf43f5e, 0xf97316, 0xeab308, 0x10b981, 0x06b6d4, 0x3b82f6, 0x8b5cf6, 0xd946ef,
+                0xec4899, 0xef4444, 0xf59e0b, 0x84cc16, 0x14b8a6, 0x6366f1, 0xa855f7, 0xf43f5e
+            ];
+
+            // Build Stages 1 to 16
+            for (let st = 1; st <= TOTAL_STAGES; st++) {
+                const stageY = (st - 1) * STAGE_HEIGHT + 6;
+                const color = colors[st - 1];
+
+                // Checkpoint Ring Platform
+                const ringGeo = new THREE.TorusGeometry(TOWER_RADIUS - 0.5, 0.4, 12, 32);
+                const ringMat = new THREE.MeshStandardMaterial({ color: color, emissive: color, emissiveIntensity: 0.3 });
+                const ring = new THREE.Mesh(ringGeo, ringMat);
+                ring.rotation.x = Math.PI / 2;
+                ring.position.y = stageY;
+                towerGroup.add(ring);
+
+                checkpointsList.push({ stage: st, y: stageY });
+
+                // Generate Specific Stage Obstacle Layouts
+                generateStageLayout(st, stageY, color);
+            }
+
+            // Stage 16 Peak Victory Floor
+            const topY = TOTAL_STAGES * STAGE_HEIGHT + 6;
+            const topGeo = new THREE.CylinderGeometry(9, 9, 2, 32);
+            const topMat = new THREE.MeshStandardMaterial({ color: 0xffd700, emissive: 0xf59e0b, emissiveIntensity: 0.5 });
+            const topFloor = new THREE.Mesh(topGeo, topMat);
+            topFloor.position.y = topY;
+            topFloor.receiveShadow = true;
+            towerGroup.add(topFloor);
+
+            // Golden Victory Trophy
+            const trophyGeo = new THREE.CylinderGeometry(1.2, 0.4, 2.5, 16);
+            const trophyMat = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.9, roughness: 0.1 });
+            const trophy = new THREE.Mesh(trophyGeo, trophyMat);
+            trophy.position.set(0, topY + 2.2, 0);
+            towerGroup.add(trophy);
+
+            obstacleObjects.push({ mesh: topFloor, type: 'top', box: new THREE.Box3() });
+        }
+
+        function generateStageLayout(stageNum, baseY, color) {
+            const mat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.3 });
+            const radius = TOWER_RADIUS - 3.5;
+            let startPos = new THREE.Vector3(0, baseY + 1.2, radius);
+
+            // Stage Checkpoint Register Position
+            stageCheckpointsPos[stageNum] = startPos.clone();
+
+            const count = 5;
+            let currentAngle = 0;
+
+            for (let i = 0; i < count; i++) {
+                currentAngle += 0.85;
+                const py = baseY + (i * 2.2);
+                const px = Math.cos(currentAngle) * radius;
+                const pz = Math.sin(currentAngle) * radius;
+
+                if (stageNum === 3 || stageNum === 9 || stageNum === 14) {
+                    // Trampoline Spring Pads
+                    const padGeo = new THREE.BoxGeometry(3.5, 0.6, 3.5);
+                    const padMat = new THREE.MeshStandardMaterial({ color: 0x06b6d4, emissive: 0x0891b2 });
+                    const pad = new THREE.Mesh(padGeo, padMat);
+                    pad.position.set(px, py, pz);
+                    towerGroup.add(pad);
+                    obstacleObjects.push({ mesh: pad, type: 'trampoline', box: new THREE.Box3() });
+                } else if (stageNum === 5 || stageNum === 15) {
+                    // Disappearing Fading Tiles
+                    const tileGeo = new THREE.BoxGeometry(3.2, 0.5, 3.2);
+                    const tileMat = new THREE.MeshStandardMaterial({ color: color, transparent: true, opacity: 0.9 });
+                    const tile = new THREE.Mesh(tileGeo, tileMat);
+                    tile.position.set(px, py, pz);
+                    towerGroup.add(tile);
+                    obstacleObjects.push({ mesh: tile, type: 'disappearing', box: new THREE.Box3(), timer: 0 });
+                } else if (stageNum === 6 || stageNum === 16) {
+                    // Moving Platforms
+                    const movGeo = new THREE.BoxGeometry(3.2, 0.6, 3.2);
+                    const mov = new THREE.Mesh(movGeo, mat);
+                    mov.position.set(px, py, pz);
+                    towerGroup.add(mov);
+                    obstacleObjects.push({
+                        mesh: mov, type: 'moving', box: new THREE.Box3(),
+                        originX: px, originZ: pz, angle: i, speed: 0.025
+                    });
                 } else {
-                    // Trampoline boost stage
-                    platforms.push({ x: curX, y: curY, w: 100, h: 20, color: '#475569' });
-                    bouncers.push({ x: curX + 40, y: curY - 15, w: 30, h: 15 });
-                    curX += 150;
-                    curY -= 80;
-                    platforms.push({ x: curX, y: curY, w: 120, h: 20, color: '#3b82f6' });
+                    // Standard Platform Steps
+                    const stepGeo = new THREE.BoxGeometry(3.8, 0.6, 3.5);
+                    const step = new THREE.Mesh(stepGeo, mat);
+                    step.position.set(px, py, pz);
+                    step.receiveShadow = true;
+                    towerGroup.add(step);
+                    obstacleObjects.push({ mesh: step, type: 'platform', box: new THREE.Box3() });
                 }
 
-                // Stage Checkpoint
-                curX += 140;
-                platforms.push({ x: curX, y: curY, w: 140, h: 25, color: '#1e293b' });
-                checkpoints.push({ x: curX + 50, y: curY - 40, stage: stage + 1, active: false });
+                // Rotating Laser Obstacles on Stages 2, 8, 13
+                if ((stageNum === 2 || stageNum === 8 || stageNum === 13) && i % 2 === 1) {
+                    const laserGeo = new THREE.CylinderGeometry(0.12, 0.12, 5.5, 8);
+                    const laserMat = new THREE.MeshBasicMaterial({ color: 0xef4444 });
+                    const laser = new THREE.Mesh(laserGeo, laserMat);
+                    laser.position.set(px, py + 1.2, pz);
+                    towerGroup.add(laser);
+                    obstacleObjects.push({ mesh: laser, type: 'laser', speed: 0.035, axis: 'y' });
+                }
 
-                // Star Gem Collectible
-                collectibles.push({ x: curX + 60, y: curY - 70, size: 12, collected: false });
+                // Coin Pickups
+                if (i % 2 === 0) {
+                    const coinGeo = new THREE.CylinderGeometry(0.35, 0.35, 0.1, 12);
+                    const coinMat = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.8 });
+                    const coin = new THREE.Mesh(coinGeo, coinMat);
+                    coin.position.set(px, py + 1.5, pz);
+                    towerGroup.add(coin);
+                    coinsObjects.push({ mesh: coin, collected: false });
+                }
             }
-
-            // End Golden Platform
-            curX += 180;
-            platforms.push({ x: curX, y: curY - 20, w: 250, h: 30, color: '#eab308' });
         }
 
-        // --- GAME LOOP ---
-        function gameLoop() {
-            update();
-            draw();
-            requestAnimationFrame(gameLoop);
+        // --- 7. PHYSICS & ACCESSIBLE CONTROLS LOOP ---
+        function animate() {
+            requestAnimationFrame(animate);
+
+            updatePlayerPhysics();
+            updateObstacles();
+            updateCameraPosition();
+            updateParticles();
+
+            renderer.render(scene, camera);
         }
 
-        // --- PHYSICS & LOGIC UPDATE ---
-        function update() {
-            // Horizontal Movement
-            if (keys.left) player.vx = -player.speed;
-            else if (keys.right) player.vx = player.speed;
-            else player.vx *= 0.8; // friction
+        function updatePlayerPhysics() {
+            if (!playerMesh) return;
 
-            // Jump
-            if (keys.jump && player.isGrounded) {
-                player.vy = -player.jumpPower;
-                player.isGrounded = false;
+            // Move Direction calculation relative to camera yaw
+            const moveSpeed = 0.2 * currentUser.speedMultiplier * (keys.shift ? 1.4 : 1.0);
+            let inputX = 0, inputZ = 0;
+
+            if (keys.w) inputZ -= 1;
+            if (keys.s) inputZ += 1;
+            if (keys.a) inputX -= 1;
+            if (keys.d) inputX += 1;
+
+            if (Math.abs(joystickVector.x) > 0.08 || Math.abs(joystickVector.y) > 0.08) {
+                inputX = joystickVector.x;
+                inputZ = joystickVector.y;
             }
 
-            // Apply Gravity
-            player.vy += 0.6; // Gravity constant
+            const forward = new THREE.Vector3(Math.sin(cameraAngleX), 0, Math.cos(cameraAngleX)).negate();
+            const right = new THREE.Vector3(Math.cos(cameraAngleX), 0, -Math.sin(cameraAngleX));
 
-            // Move Player Horizontal
-            player.x += player.vx;
+            const moveDir = new THREE.Vector3();
+            moveDir.addScaledVector(forward, -inputZ);
+            moveDir.addScaledVector(right, inputX);
+            if (moveDir.lengthSq() > 0) moveDir.normalize();
 
-            // Horizontal moving platforms logic
-            platforms.forEach(p => {
-                if (p.isMoving) {
-                    p.x += p.speed * p.dir;
-                    if (p.x > p.startX + p.range || p.x < p.startX) p.dir *= -1;
+            playerVelocity.x = moveDir.x * moveSpeed;
+            playerVelocity.z = moveDir.z * moveSpeed;
+
+            // Smooth Dog Rotation facing walk direction
+            if (moveDir.lengthSq() > 0.01) {
+                const targetRotation = Math.atan2(moveDir.x, moveDir.z);
+                playerMesh.rotation.y = targetRotation;
+
+                // Leg Trot Animation
+                const time = Date.now() * 0.012;
+                if (dogLegs.length === 4) {
+                    dogLegs[0].rotation.x = Math.sin(time) * 0.6;
+                    dogLegs[1].rotation.x = -Math.sin(time) * 0.6;
+                    dogLegs[2].rotation.x = -Math.sin(time) * 0.6;
+                    dogLegs[3].rotation.x = Math.sin(time) * 0.6;
                 }
-            });
-
-            // Collision with Platforms
-            player.isGrounded = false;
-            platforms.forEach(p => {
-                if (
-                    player.x + player.width > p.x &&
-                    player.x < p.x + p.w &&
-                    player.y + player.height >= p.y &&
-                    player.y + player.height <= p.y + p.h + player.vy &&
-                    player.vy >= 0
-                ) {
-                    player.y = p.y - player.height;
-                    player.vy = 0;
-                    player.isGrounded = true;
-
-                    // Carry player if on moving platform
-                    if (p.isMoving) player.x += p.speed * p.dir;
-                }
-            });
-
-            // Vertical position update
-            player.y += player.vy;
-
-            // Check Bouncers (Trampolines)
-            bouncers.forEach(b => {
-                if (
-                    player.x + player.width > b.x &&
-                    player.x < b.x + b.w &&
-                    player.y + player.height >= b.y &&
-                    player.y <= b.y + b.h
-                ) {
-                    player.vy = -17; // Mega Jump
-                    showToast('Супер Стрибок! 🦘');
-                }
-            });
-
-            // Check Lava Collision (Death / Reset to Checkpoint)
-            lavas.forEach(l => {
-                if (
-                    player.x + player.width > l.x &&
-                    player.x < l.x + l.w &&
-                    player.y + player.height > l.y &&
-                    player.y < l.y + l.h
-                ) {
-                    respawnPlayer();
-                    showToast('Обережно, Лава! 💥');
-                }
-            });
-
-            // Fall off World Reset
-            if (player.y > canvas.height + 200) {
-                respawnPlayer();
             }
 
-            // Check Checkpoints Collision
-            checkpoints.forEach(cp => {
-                if (Math.abs(player.x - cp.x) < 40 && Math.abs(player.y - cp.y) < 50) {
-                    if (!cp.active) {
-                        cp.active = true;
-                        player.checkpoint = { x: cp.x, y: cp.y };
-                        player.stage = cp.stage;
-                        document.getElementById('stageLabel').innerText = player.stage;
-                        showToast(`Чекпоінт! Етап ${player.stage} 🚩`);
+            // Gravity & Coyote Grace Period
+            playerVelocity.y -= 0.022;
+
+            if (isGrounded) {
+                coyoteTimeCounter = 8; // 8 frames coyote grace period
+            } else {
+                coyoteTimeCounter--;
+            }
+
+            if (jumpBufferCounter > 0) {
+                jumpBufferCounter--;
+                if (coyoteTimeCounter > 0) {
+                    executeJump();
+                }
+            }
+
+            // Apply Velocity
+            playerPos.add(playerVelocity);
+
+            // Ground Level Base Check
+            if (playerPos.y <= 1.2) {
+                playerPos.y = 1.2;
+                playerVelocity.y = 0;
+                isGrounded = true;
+            } else {
+                isGrounded = false;
+            }
+
+            // Platform Collision Detection (AABB)
+            const playerRadius = 0.6;
+            obstacleObjects.forEach(obj => {
+                if (!obj.mesh.visible) return;
+
+                if (obj.type === 'platform' || obj.type === 'moving' || obj.type === 'disappearing' || obj.type === 'top') {
+                    const box = new THREE.Box3().setFromObject(obj.mesh);
+
+                    if (
+                        playerPos.x >= box.min.x - playerRadius && playerPos.x <= box.max.x + playerRadius &&
+                        playerPos.z >= box.min.z - playerRadius && playerPos.z <= box.max.z + playerRadius &&
+                        playerPos.y - playerRadius <= box.max.y && playerPos.y - playerRadius >= box.min.y - 0.3 &&
+                        playerVelocity.y <= 0
+                    ) {
+                        playerPos.y = box.max.y + playerRadius;
+                        playerVelocity.y = 0;
+                        isGrounded = true;
+
+                        if (obj.type === 'disappearing') {
+                            obj.timer = obj.timer || 0;
+                            obj.timer++;
+                            if (obj.timer > 25) {
+                                obj.mesh.visible = false;
+                                setTimeout(() => { obj.mesh.visible = true; obj.timer = 0; }, 3000);
+                            }
+                        }
+
+                        if (obj.type === 'top') {
+                            triggerVictorySequence();
+                        }
+                    }
+                } else if (obj.type === 'trampoline') {
+                    const box = new THREE.Box3().setFromObject(obj.mesh);
+                    if (
+                        playerPos.x >= box.min.x - playerRadius && playerPos.x <= box.max.x + playerRadius &&
+                        playerPos.z >= box.min.z - playerRadius && playerPos.z <= box.max.z + playerRadius &&
+                        playerPos.y - playerRadius <= box.max.y && playerPos.y - playerRadius >= box.min.y - 0.3
+                    ) {
+                        playerVelocity.y = 0.62 * currentUser.jumpPowerMultiplier;
+                        playSound('bounce');
+                        showToast('БА ТУТ! 🦘');
+                    }
+                } else if (obj.type === 'laser') {
+                    if (playerPos.distanceTo(obj.mesh.position) < 1.4) {
+                        playSound('lava');
+                        showToast('Зачепили 3D Лазер! 💥');
+                        respawnPlayerAtCheckpoint();
                     }
                 }
             });
 
-            // Collectible Stars Collision
-            collectibles.forEach(c => {
-                if (!c.collected && Math.hypot(player.x - c.x, player.y - c.y) < 30) {
-                    c.collected = true;
-                    player.stars += 1;
-                    document.getElementById('starCount').innerText = player.stars;
-                    showToast('+1 Зірочка! ⭐');
+            // Lava Reset Fall Check (Reset to last stage checkpoint)
+            const currentStageY = (currentUser.currentCheckpointStage - 1) * STAGE_HEIGHT;
+            if (playerPos.y < currentStageY - 10 && playerPos.y > 2) {
+                playSound('lava');
+                showToast(`Впали у лаву! Респавн на Stage ${currentUser.currentCheckpointStage} 🔥`);
+                respawnPlayerAtCheckpoint();
+            }
+
+            // Checkpoint Stage Heights Updates
+            checkpointsList.forEach(cp => {
+                if (playerPos.y >= cp.y && currentUser.currentCheckpointStage < cp.stage) {
+                    currentUser.currentCheckpointStage = cp.stage;
+                    saveUserData();
+                    document.getElementById('checkpointText').innerText = `Stage ${cp.stage} / 16`;
+                    showToast(`Чекпоінт: Stage ${cp.stage} / 16 🚩`);
+                    playSound('coin');
                 }
             });
 
-            // Update Smooth Camera Follow
-            cameraX = player.x - canvas.width / 3;
+            playerMesh.position.copy(playerPos);
 
-            // Update Speedrun Timer
-            const elapsed = Math.floor((Date.now() - startTime) / 1000);
-            const mins = String(Math.floor(elapsed / 60)).padStart(2, '0');
-            const secs = String(elapsed % 60).padStart(2, '0');
-            document.getElementById('timerLabel').innerText = `${mins}:${secs}`;
+            // Height HUD Bar Progress
+            const progress = Math.min(100, Math.max(0, Math.floor((playerPos.y / TOWER_MAX_HEIGHT) * 100)));
+            document.getElementById('towerProgressBar').style.height = `${progress}%`;
+
+            // Trail Particle Effect
+            if (currentUser.hasTrail && moveDir.lengthSq() > 0) {
+                spawnTrailParticle();
+            }
         }
 
-        function respawnPlayer() {
-            player.x = player.checkpoint.x;
-            player.y = player.checkpoint.y - 10;
-            player.vx = 0;
-            player.vy = 0;
-        }
-
-        // --- RENDER GAME CANVAS ---
-        function draw() {
-            // Dynamic Sky Gradient based on Server
-            const server = SERVERS.find(s => s.id === currentServerId);
-            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-            gradient.addColorStop(0, server.sky[0]);
-            gradient.addColorStop(1, server.sky[1]);
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            ctx.save();
-            ctx.translate(-cameraX, 0); // Apply Camera Offset
-
-            // 1. Draw Platforms
-            platforms.forEach(p => {
-                ctx.fillStyle = p.color;
-                ctx.beginPath();
-                ctx.roundRect(p.x, p.y, p.w, p.h, 6);
-                ctx.fill();
-                ctx.strokeStyle = 'rgba(255,255,255,0.2)';
-                ctx.stroke();
+        function updateObstacles() {
+            obstacleObjects.forEach(obj => {
+                if (obj.type === 'laser') {
+                    obj.mesh.rotation.y += obj.speed;
+                } else if (obj.type === 'moving') {
+                    obj.angle += obj.speed;
+                    obj.mesh.position.x = obj.originX + Math.sin(obj.angle) * 3;
+                    obj.mesh.position.z = obj.originZ + Math.cos(obj.angle) * 3;
+                }
             });
 
-            // 2. Draw Lava Blocks
-            lavas.forEach(l => {
-                ctx.fillStyle = '#ef4444';
-                ctx.fillRect(l.x, l.y, l.w, l.h);
-                ctx.fillStyle = '#fb923c';
-                ctx.fillRect(l.x, l.y, l.w, 4); // Lava Glow Top
-            });
-
-            // 3. Draw Bouncers (Trampolines)
-            bouncers.forEach(b => {
-                ctx.fillStyle = '#a855f7';
-                ctx.beginPath();
-                ctx.roundRect(b.x, b.y, b.w, b.h, 4);
-                ctx.fill();
-                ctx.fillStyle = '#c084fc';
-                ctx.fillRect(b.x + 4, b.y, b.w - 8, 3);
-            });
-
-            // 4. Draw Checkpoints
-            checkpoints.forEach(cp => {
-                // Flag Pole
-                ctx.fillStyle = '#94a3b8';
-                ctx.fillRect(cp.x, cp.y, 4, 35);
-
-                // Flag Banner
-                ctx.fillStyle = cp.active ? '#10b981' : '#f43f5e';
-                ctx.beginPath();
-                ctx.moveTo(cp.x + 4, cp.y);
-                ctx.lineTo(cp.x + 24, cp.y + 10);
-                ctx.lineTo(cp.x + 4, cp.y + 20);
-                ctx.fill();
-            });
-
-            // 5. Draw Collectibles (Stars)
-            collectibles.forEach(c => {
+            coinsObjects.forEach(c => {
                 if (!c.collected) {
-                    ctx.font = '18px Fredoka';
-                    ctx.textAlign = 'center';
-                    ctx.fillText('⭐', c.x, c.y);
+                    c.mesh.rotation.y += 0.04;
+                    if (playerPos.distanceTo(c.mesh.position) < 1.4) {
+                        c.collected = true;
+                        c.mesh.visible = false;
+                        currentUser.coins += 3;
+                        saveUserData();
+                        document.getElementById('coinCount').innerText = currentUser.coins;
+                        playSound('coin');
+                        showToast('+3 Монети! 🪙');
+                    }
                 }
             });
+        }
 
-            // 6. Draw Other Players on Same Server
-            otherPlayers.forEach(p => {
-                if (p.serverId === currentServerId) {
-                    drawCharacter(p.x, p.y, p.character, p.name, false, null, null);
+        function updateCameraPosition() {
+            const cx = playerPos.x + cameraDistance * Math.sin(cameraAngleX) * Math.cos(cameraAngleY);
+            const cy = playerPos.y + cameraDistance * Math.sin(cameraAngleY) + 1.2;
+            const cz = playerPos.z + cameraDistance * Math.cos(cameraAngleX) * Math.cos(cameraAngleY);
+
+            camera.position.set(cx, cy, cz);
+            camera.lookAt(playerPos.x, playerPos.y + 1, playerPos.z);
+        }
+
+        function requestJump() {
+            jumpBufferCounter = 6;
+            if (coyoteTimeCounter > 0) {
+                executeJump();
+            }
+        }
+
+        function executeJump() {
+            playerVelocity.y = 0.43 * currentUser.jumpPowerMultiplier;
+            coyoteTimeCounter = 0;
+            jumpBufferCounter = 0;
+            isGrounded = false;
+            playSound('jump');
+        }
+
+        function respawnPlayerAtCheckpoint() {
+            const st = currentUser.currentCheckpointStage || 1;
+            const targetPos = stageCheckpointsPos[st] || new THREE.Vector3(0, 2, 0);
+            playerPos.copy(targetPos);
+            playerVelocity.set(0, 0, 0);
+        }
+
+        function triggerVictorySequence() {
+            currentUser.coins += 250;
+            saveUserData();
+            document.getElementById('coinCount').innerText = currentUser.coins;
+            playSound('victory');
+            showToast('👑 ВЕРШИНА ВЕЖІ (STAGE 16) ДОСЯГНУТА! +250 МОНЕТ! 🎉');
+            addChatMessage('ВЕЖА', `🎉 Гравець ${currentUser.username} пройшов усі 16 Рівнів!`);
+
+            // Spawn Fireworks
+            for (let i = 0; i < 30; i++) {
+                const pGeo = new THREE.SphereGeometry(0.2, 8, 8);
+                const pMat = new THREE.MeshBasicMaterial({ color: Math.random() * 0xffffff });
+                const p = new THREE.Mesh(pGeo, pMat);
+                p.position.copy(playerPos);
+                p.position.y += 2;
+                scene.add(p);
+                fireworksList.push({
+                    mesh: p,
+                    vel: new THREE.Vector3((Math.random() - 0.5) * 0.4, Math.random() * 0.4, (Math.random() - 0.5) * 0.4),
+                    life: 1.0
+                });
+            }
+
+            setTimeout(() => { respawnPlayerAtCheckpoint(); }, 4000);
+        }
+
+        // --- 8. PARTICLE & FIREWORK UPDATES ---
+        function spawnTrailParticle() {
+            const pGeo = new THREE.SphereGeometry(0.16, 8, 8);
+            const pMat = new THREE.MeshBasicMaterial({ color: Math.random() * 0xffffff });
+            const p = new THREE.Mesh(pGeo, pMat);
+            p.position.copy(playerPos);
+            p.position.y -= 0.3;
+            scene.add(p);
+            trailParticles.push({ mesh: p, life: 1.0 });
+        }
+
+        function updateParticles() {
+            for (let i = trailParticles.length - 1; i >= 0; i--) {
+                const p = trailParticles[i];
+                p.life -= 0.05;
+                p.mesh.scale.multiplyScalar(0.9);
+                if (p.life <= 0) {
+                    scene.remove(p.mesh);
+                    trailParticles.splice(i, 1);
                 }
-            });
-
-            // 7. Draw Main Player
-            drawCharacter(player.x, player.y, player.character, player.name, true, player.chatBubble, player.emote);
-
-            ctx.restore();
-        }
-
-        // --- DRAW CHARACTER AVATAR ---
-        function drawCharacter(x, y, charKey, name, isMe, chatMsg, emote) {
-            const char = CHARACTERS[charKey] || CHARACTERS.fibi;
-
-            ctx.save();
-
-            // Character Body Container
-            ctx.fillStyle = char.color;
-            ctx.beginPath();
-            ctx.arc(x + 16, y + 16, 18, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Border Highlight
-            ctx.strokeStyle = isMe ? '#ffffff' : 'rgba(0,0,0,0.4)';
-            ctx.lineWidth = isMe ? 3 : 2;
-            ctx.stroke();
-
-            // Emoji Face
-            ctx.font = '18px Fredoka';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(char.icon, x + 16, y + 17);
-
-            // Player Name & Badge Overhead
-            ctx.font = 'bold 12px Fredoka';
-            const textWidth = ctx.measureText(name).width;
-            ctx.fillStyle = 'rgba(15, 23, 42, 0.8)';
-            ctx.roundRect(x + 16 - textWidth / 2 - 6, y - 24, textWidth + 12, 18, 6);
-            ctx.fill();
-
-            ctx.fillStyle = isMe ? '#60a5fa' : '#ffffff';
-            ctx.fillText(name, x + 16, y - 12);
-
-            // Emote Overhead
-            if (emote) {
-                ctx.font = '22px Fredoka';
-                ctx.fillText(emote, x + 36, y - 10);
             }
 
-            // Chat Bubble
-            if (chatMsg) {
-                ctx.font = '12px Fredoka';
-                const msgWidth = ctx.measureText(chatMsg).width;
-                const bubbleW = msgWidth + 16;
-                const bubbleH = 24;
-                const bubbleX = x + 16 - bubbleW / 2;
-                const bubbleY = y - 56;
-
-                ctx.fillStyle = '#ffffff';
-                ctx.roundRect(bubbleX, bubbleY, bubbleW, bubbleH, 8);
-                ctx.fill();
-
-                ctx.fillStyle = '#0f172a';
-                ctx.textAlign = 'center';
-                ctx.fillText(chatMsg, x + 16, bubbleY + 16);
+            for (let i = fireworksList.length - 1; i >= 0; i--) {
+                const fw = fireworksList[i];
+                fw.mesh.position.add(fw.vel);
+                fw.life -= 0.02;
+                if (fw.life <= 0) {
+                    scene.remove(fw.mesh);
+                    fireworksList.splice(i, 1);
+                }
             }
-
-            ctx.restore();
         }
 
-        // --- CONTROLS SETUP ---
-        function setupControls() {
+        // --- 9. KEYBOARD & TOUCH INPUT LISTENERS ---
+        function setupInputListeners() {
             window.addEventListener('keydown', e => {
                 if (document.activeElement.tagName === 'INPUT') return;
-                if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') keys.left = true;
-                if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') keys.right = true;
-                if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp' || e.key === ' ') keys.jump = true;
+                if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') keys.w = true;
+                if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') keys.s = true;
+                if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') keys.a = true;
+                if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') keys.d = true;
+                if (e.key === 'q' || e.key === 'Q') cameraAngleX += 0.15;
+                if (e.key === 'e' || e.key === 'E') cameraAngleX -= 0.15;
+                if (e.key === 'Shift') keys.shift = true;
+                if (e.key === ' ' && !keys.space) { requestJump(); keys.space = true; }
             });
 
             window.addEventListener('keyup', e => {
                 if (document.activeElement.tagName === 'INPUT') return;
-                if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') keys.left = false;
-                if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') keys.right = false;
-                if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp' || e.key === ' ') keys.jump = false;
+                if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') keys.w = false;
+                if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') keys.s = false;
+                if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') keys.a = false;
+                if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') keys.d = false;
+                if (e.key === 'Shift') keys.shift = false;
+                if (e.key === ' ') keys.space = false;
             });
 
-            // Touch Joystick Buttons
-            const bindTouch = (id, keyName) => {
-                const btn = document.getElementById(id);
-                btn.addEventListener('touchstart', (e) => { e.preventDefault(); keys[keyName] = true; });
-                btn.addEventListener('touchend', (e) => { e.preventDefault(); keys[keyName] = false; });
-                btn.addEventListener('mousedown', () => keys[keyName] = true);
-                btn.addEventListener('mouseup', () => keys[keyName] = false);
+            // PC Mouse Camera Orbit
+            const container = document.getElementById('canvasContainer');
+            container.addEventListener('mousedown', e => {
+                isMouseDown = true;
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            });
+
+            window.addEventListener('mouseup', () => isMouseDown = false);
+
+            window.addEventListener('mousemove', e => {
+                if (isMouseDown) {
+                    const deltaX = e.clientX - previousMousePosition.x;
+                    const deltaY = e.clientY - previousMousePosition.y;
+
+                    cameraAngleX -= deltaX * 0.006;
+                    cameraAngleY += deltaY * 0.006;
+                    cameraAngleY = Math.max(-0.2, Math.min(1.2, cameraAngleY));
+
+                    previousMousePosition = { x: e.clientX, y: e.clientY };
+                }
+            });
+
+            // Mobile Touch Camera Drag
+            const cameraTouchArea = document.getElementById('cameraTouchArea');
+            let lastTouchX = 0, lastTouchY = 0;
+
+            cameraTouchArea.addEventListener('touchstart', e => {
+                if (e.touches.length > 0) {
+                    lastTouchX = e.touches[0].clientX;
+                    lastTouchY = e.touches[0].clientY;
+                }
+            });
+
+            cameraTouchArea.addEventListener('touchmove', e => {
+                if (e.touches.length > 0) {
+                    const deltaX = e.touches[0].clientX - lastTouchX;
+                    const deltaY = e.touches[0].clientY - lastTouchY;
+
+                    cameraAngleX -= deltaX * 0.008;
+                    cameraAngleY += deltaY * 0.008;
+                    cameraAngleY = Math.max(-0.2, Math.min(1.2, cameraAngleY));
+
+                    lastTouchX = e.touches[0].clientX;
+                    lastTouchY = e.touches[0].clientY;
+                }
+            });
+        }
+
+        // --- 10. MOBILE VIRTUAL JOYSTICK & BUTTONS ---
+        function setupMobileJoystick() {
+            const container = document.getElementById('joystickContainer');
+            const knob = document.getElementById('joystickKnob');
+
+            let touchId = null;
+            let center = { x: 0, y: 0 };
+
+            container.addEventListener('touchstart', e => {
+                e.preventDefault();
+                const touch = e.changedTouches[0];
+                touchId = touch.identifier;
+                const rect = container.getBoundingClientRect();
+                center = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+            });
+
+            window.addEventListener('touchmove', e => {
+                if (touchId === null) return;
+                for (let i = 0; i < e.changedTouches.length; i++) {
+                    const touch = e.changedTouches[i];
+                    if (touch.identifier === touchId) {
+                        const dx = touch.clientX - center.x;
+                        const dy = touch.clientY - center.y;
+                        const dist = Math.hypot(dx, dy);
+                        const maxRadius = 45;
+
+                        const angle = Math.atan2(dy, dx);
+                        const clampedDist = Math.min(dist, maxRadius);
+
+                        const kx = Math.cos(angle) * clampedDist;
+                        const ky = Math.sin(angle) * clampedDist;
+
+                        knob.style.transform = `translate(${kx}px, ${ky}px)`;
+
+                        joystickVector.x = kx / maxRadius;
+                        joystickVector.y = ky / maxRadius;
+                    }
+                }
+            });
+
+            const resetJoystick = (e) => {
+                if (touchId === null) return;
+                for (let i = 0; i < e.changedTouches.length; i++) {
+                    if (e.changedTouches[i].identifier === touchId) {
+                        touchId = null;
+                        knob.style.transform = `translate(0px, 0px)`;
+                        joystickVector = { x: 0, y: 0 };
+                    }
+                }
             };
 
-            bindTouch('btnLeft', 'left');
-            bindTouch('btnRight', 'right');
-            bindTouch('btnJump', 'jump');
-        }
+            window.addEventListener('touchend', resetJoystick);
+            window.addEventListener('touchcancel', resetJoystick);
 
-        // --- CHAT SYSTEM ---
-        function sendChatMessage(e) {
-            e.preventDefault();
-            const input = document.getElementById('chatInput');
-            const text = input.value.trim();
+            // Jump Touch Button
+            const btnJump = document.getElementById('btnJump');
+            btnJump.addEventListener('touchstart', e => { e.preventDefault(); requestJump(); });
 
-            if (text.length > 0) {
-                addChatMessage(player.name, text, false);
+            // Sprint Touch Button
+            const btnSprint = document.getElementById('btnSprint');
+            btnSprint.addEventListener('touchstart', e => {
+                e.preventDefault();
+                keys.shift = !keys.shift;
+                btnSprint.classList.toggle('bg-amber-500', keys.shift);
+            });
 
-                player.chatBubble = text;
-                clearTimeout(player.chatTimer);
-                player.chatTimer = setTimeout(() => {
-                    player.chatBubble = null;
-                }, 4000);
-
-                input.value = '';
-            }
-        }
-
-        function addChatMessage(author, text, isSystem = false) {
-            const chatBox = document.getElementById('chatMessages');
-            const msgEl = document.createElement('div');
-            msgEl.className = `chat-bubble text-xs ${isSystem ? 'text-yellow-400 font-semibold' : ''}`;
-            msgEl.innerHTML = `<span class="font-bold opacity-80">${author}:</span> ${escapeHTML(text)}`;
-            chatBox.prepend(msgEl);
-        }
-
-        function triggerEmote(emoteText) {
-            player.emote = emoteText.split(' ')[0];
-            addChatMessage(player.name, emoteText);
-
-            clearTimeout(player.emoteTimer);
-            player.emoteTimer = setTimeout(() => {
-                player.emote = null;
-            }, 3000);
-        }
-
-        // --- SERVER SYSTEM ---
-        function switchServer(serverId) {
-            currentServerId = serverId;
-            const server = SERVERS.find(s => s.id === serverId);
-
-            // Reset player to start
-            player.checkpoint = { x: 100, y: 300 };
-            player.stage = 1;
-            document.getElementById('stageLabel').innerText = 1;
-            respawnPlayer();
-
-            updateServerUI();
-            showToast(`Перехід на ${server.name} 🚀`);
-            addChatMessage('Система', `Ви приєдналися до сервера ${server.name}`);
-            toggleModal('serversModal', false);
-        }
-
-        function updateServerUI() {
-            const server = SERVERS.find(s => s.id === currentServerId);
-            document.getElementById('currentServerLabel').innerText = server.name;
-
-            const currentPlayers = [
-                player,
-                ...otherPlayers.filter(p => p.serverId === currentServerId)
-            ];
-
-            document.getElementById('playerCountLabel').innerText = `${currentPlayers.length}/${server.max}`;
-
-            const listEl = document.getElementById('serverPlayersList');
-            listEl.innerHTML = '';
-            currentPlayers.forEach(p => {
-                const char = CHARACTERS[p.character] || CHARACTERS.fibi;
-                const li = document.createElement('li');
-                li.className = 'flex items-center justify-between bg-slate-800/60 px-2 py-1 rounded-lg border border-slate-700/50';
-                li.innerHTML = `
-                    <div class="flex items-center gap-2">
-                        <span>${char.icon}</span>
-                        <span class="font-medium text-slate-200 truncate max-w-[100px]">${escapeHTML(p.name)}</span>
-                    </div>
-                    <span class="text-[10px] px-1.5 py-0.5 rounded ${p.id === undefined ? 'bg-blue-500/20 text-blue-400' : 'bg-slate-700 text-slate-400'}">
-                        ${p.id === undefined ? 'Ти' : 'Гравець'}
-                    </span>
-                `;
-                listEl.appendChild(li);
+            // Camera Rotate Touch Button
+            const btnCamRotate = document.getElementById('btnCamRotate');
+            btnCamRotate.addEventListener('touchstart', e => {
+                e.preventDefault();
+                cameraAngleX += Math.PI / 4;
             });
         }
 
-        // --- FRIENDS SYSTEM ---
-        function joinFriendServer(friendId) {
-            const friend = friends.find(f => f.id === friendId);
-            if (!friend || !friend.online) {
-                showToast('Друг зараз офлайн! ❌');
+        function onWindowResize() {
+            const container = document.getElementById('canvasContainer');
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+
+        // --- 11. ROUND TIMER & SHOP & SERVERS ---
+        function updateRoundTimer() {
+            globalRoundSeconds--;
+            if (globalRoundSeconds <= 0) {
+                globalRoundSeconds = 600;
+                currentUser.currentCheckpointStage = 1;
+                build16Stage3DTower();
+                respawnPlayerAtCheckpoint();
+                addChatMessage('СИСТЕМА', '⌛ ЧАС ВИЙШОВ! Вежу оновлено!');
+                showToast('ВЕЖУ ОНОВЛЕНО! 🔄');
+            }
+
+            const mins = String(Math.floor(globalRoundSeconds / 60)).padStart(2, '0');
+            const secs = String(globalRoundSeconds % 60).padStart(2, '0');
+            document.getElementById('roundTimer').innerText = `${mins}:${secs}`;
+        }
+
+        function buyMutator(type, cost) {
+            if (currentUser.coins < cost) {
+                showToast('Недостатньо монет! 🪙');
                 return;
             }
 
+            currentUser.coins -= cost;
+            saveUserData();
+            document.getElementById('coinCount').innerText = currentUser.coins;
+
+            if (type === 'speed') {
+                currentUser.speedMultiplier = 1.4;
+                showToast('Швидкість підвищено! ⚡');
+            } else if (type === 'jump') {
+                currentUser.jumpPowerMultiplier = 1.3;
+                showToast('Супер стрибок куплений! 🦘');
+            } else if (type === 'trail') {
+                currentUser.hasTrail = true;
+                showToast('Райдужний слід розблоковано! ✨');
+            }
+
+            toggleModal('shopModal', false);
+        }
+
+        function joinFriendServer(friendId) {
+            const friend = friends.find(f => f.id === friendId);
+            if (!friend) return;
+
             if (friend.serverId === currentServerId) {
-                showToast(`Ви вже на одному сервері з ${friend.name}! 😊`);
+                showToast(`Ви вже на одному серверах з ${friend.username}! 😊`);
                 toggleModal('friendsModal', false);
                 return;
             }
 
             switchServer(friend.serverId);
             toggleModal('friendsModal', false);
-            showToast(`Телепортація до друга ${friend.name}! 🌟`);
+            showToast(`Приєдналися до друга ${friend.username}! 🚀`);
         }
 
         function addFriend() {
@@ -796,85 +1278,86 @@
             const name = input.value.trim();
 
             if (name.length > 0) {
-                const randomCharKeys = Object.keys(CHARACTERS);
-                const randomChar = randomCharKeys[Math.floor(Math.random() * randomCharKeys.length)];
-                const randomServer = SERVERS[Math.floor(Math.random() * SERVERS.length)].id;
-
-                const newFriend = {
+                friends.push({
                     id: `f_${Date.now()}`,
-                    name: name,
-                    character: randomChar,
+                    username: name,
+                    character: 'fibi',
                     online: true,
-                    serverId: randomServer
-                };
-
-                friends.push(newFriend);
+                    serverId: 'server1',
+                    stage: Math.floor(Math.random() * 12) + 1
+                });
                 input.value = '';
                 renderFriendsModal();
                 showToast(`Друга ${name} додано! 🎉`);
             }
         }
 
-        // --- MODAL RENDERERS ---
-        function renderAvatarModal() {
-            const container = document.getElementById('avatarGrid');
-            container.innerHTML = '';
+        function switchServer(serverId) {
+            currentServerId = serverId;
+            currentUser.currentCheckpointStage = 1;
+            build16Stage3DTower();
+            respawnPlayerAtCheckpoint();
+            updateServerUI();
+            toggleModal('serversModal', false);
 
-            Object.values(CHARACTERS).forEach(char => {
-                const isSelected = player.character === char.id;
-                const card = document.createElement('div');
-                card.className = `p-4 rounded-xl border-2 cursor-pointer transition flex flex-col items-center gap-2 ${char.bgColor} ${isSelected ? 'border-blue-500 scale-105 shadow-lg shadow-blue-500/20' : 'border-slate-700 hover:border-slate-500'}`;
-                card.onclick = () => selectCharacter(char.id);
-
-                card.innerHTML = `
-                    <div class="text-4xl mb-1">${char.icon}</div>
-                    <div class="font-bold text-center text-sm text-slate-100">${char.name}</div>
-                    <div class="text-[11px] text-slate-400 text-center">${char.role}</div>
-                    ${isSelected ? '<span class="text-[10px] bg-blue-500 text-white px-2 py-0.5 rounded-full font-bold mt-1">Обрано</span>' : ''}
-                `;
-                container.appendChild(card);
-            });
+            const s = SERVERS.find(srv => srv.id === serverId);
+            showToast(`Перехід на Сервер ${s.name} 🏰`);
         }
 
-        function selectCharacter(charId) {
-            player.character = charId;
-            renderAvatarModal();
-            updateServerUI();
-            showToast(`Персонажа змінено на ${CHARACTERS[charId].name}! ✨`);
-            toggleModal('avatarModal', false);
+        function updateServerUI() {
+            const s = SERVERS.find(srv => srv.id === currentServerId);
+            document.getElementById('hudServerName').innerText = s.name;
+        }
+
+        function sendChatMessage(e) {
+            e.preventDefault();
+            const input = document.getElementById('chatInput');
+            const text = input.value.trim();
+            if (text.length > 0) {
+                addChatMessage(currentUser.username, text);
+                input.value = '';
+            }
+        }
+
+        function addChatMessage(author, text) {
+            const chatBox = document.getElementById('chatMessages');
+            const msgEl = document.createElement('div');
+            msgEl.className = 'text-xs text-slate-200';
+            msgEl.innerHTML = `<span class="font-bold text-rose-400">${escapeHTML(author)}:</span> ${escapeHTML(text)}`;
+            chatBox.prepend(msgEl);
+        }
+
+        function triggerEmote(emoteText) {
+            addChatMessage(currentUser.username, emoteText);
         }
 
         function renderFriendsModal() {
             const container = document.getElementById('friendsList');
             container.innerHTML = '';
-
-            const onlineCount = friends.filter(f => f.online).length;
-            document.getElementById('onlineFriendsBadge').innerText = onlineCount;
+            document.getElementById('friendsBadge').innerText = friends.length;
 
             friends.forEach(f => {
                 const char = CHARACTERS[f.character] || CHARACTERS.fibi;
                 const server = SERVERS.find(s => s.id === f.serverId);
 
                 const item = document.createElement('div');
-                item.className = 'flex items-center justify-between bg-slate-900/60 border border-slate-700/70 p-3 rounded-xl';
+                item.className = 'flex items-center justify-between bg-slate-900/80 border border-slate-800 p-3 rounded-2xl';
                 item.innerHTML = `
                     <div class="flex items-center gap-3">
                         <div class="text-2xl">${char.icon}</div>
                         <div>
-                            <div class="font-bold text-sm text-slate-100 flex items-center gap-2">
-                                ${escapeHTML(f.name)}
-                                <span class="w-2 h-2 rounded-full ${f.online ? 'bg-emerald-500' : 'bg-slate-500'}"></span>
+                            <div class="font-bold text-xs text-white flex items-center gap-2">
+                                ${escapeHTML(f.username)}
+                                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
                             </div>
-                            <div class="text-xs text-slate-400">
-                                ${f.online ? `Сервер: <span class="text-emerald-400">${server ? server.name : 'Obby'}</span>` : 'Офлайн'}
+                            <div class="text-[10px] text-slate-400">
+                                ${server ? server.name : 'Server'} • Stage ${f.stage}
                             </div>
                         </div>
                     </div>
-                    ${f.online ? `
-                        <button onclick="joinFriendServer('${f.id}')" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition btn-bounce flex items-center gap-1.5">
-                            <i class="fa-solid fa-right-to-bracket"></i> Join
-                        </button>
-                    ` : ''}
+                    <button onclick="joinFriendServer('${f.id}')" class="bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition btn-bounce flex items-center gap-1">
+                        <i class="fa-solid fa-right-to-bracket"></i> Join
+                    </button>
                 `;
                 container.appendChild(item);
             });
@@ -886,32 +1369,24 @@
 
             SERVERS.forEach(s => {
                 const isCurrent = s.id === currentServerId;
-                const activeCount = isCurrent ? 
-                    1 + otherPlayers.filter(p => p.serverId === s.id).length :
-                    otherPlayers.filter(p => p.serverId === s.id).length;
-
                 const card = document.createElement('div');
-                card.className = `p-3.5 rounded-xl border flex items-center justify-between ${isCurrent ? 'bg-blue-900/30 border-blue-500' : 'bg-slate-900/60 border-slate-700 hover:border-slate-600'}`;
+                card.className = `p-3 rounded-2xl border flex items-center justify-between ${isCurrent ? 'bg-rose-950/40 border-rose-500' : 'bg-slate-900/80 border-slate-800 hover:border-slate-700'}`;
                 card.innerHTML = `
                     <div>
-                        <div class="font-bold text-sm text-slate-100 flex items-center gap-2">
+                        <div class="font-bold text-xs text-white flex items-center gap-2">
                             ${s.name}
-                            ${isCurrent ? '<span class="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full">Поточний</span>' : ''}
+                            ${isCurrent ? '<span class="text-[9px] bg-rose-500/20 text-rose-400 border border-rose-500/30 px-2 py-0.5 rounded-full">Активний</span>' : ''}
                         </div>
-                        <div class="text-xs text-slate-400 mt-0.5">${s.desc}</div>
+                        <div class="text-[10px] text-slate-400 mt-0.5">${s.desc}</div>
                     </div>
-                    <div class="flex items-center gap-3">
-                        <span class="text-xs text-slate-400 font-medium"><i class="fa-solid fa-user text-slate-500"></i> ${activeCount}/${s.max}</span>
-                        <button onclick="switchServer('${s.id}')" ${isCurrent ? 'disabled' : ''} class="${isCurrent ? 'bg-slate-700 text-slate-500 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-500 text-white'} text-xs font-bold px-3 py-1.5 rounded-lg transition btn-bounce">
-                            ${isCurrent ? 'Активний' : 'Увійти'}
-                        </button>
-                    </div>
+                    <button onclick="switchServer('${s.id}')" ${isCurrent ? 'disabled' : ''} class="${isCurrent ? 'bg-slate-800 text-slate-500 cursor-not-allowed' : 'bg-rose-600 hover:bg-rose-500 text-white'} text-xs font-bold px-3 py-1.5 rounded-xl transition btn-bounce">
+                        ${isCurrent ? 'Обрано' : 'Вхід'}
+                    </button>
                 `;
                 container.appendChild(card);
             });
         }
 
-        // --- UTILS ---
         function toggleModal(modalId, forceState = null) {
             const modal = document.getElementById(modalId);
             if (forceState !== null) {
@@ -934,7 +1409,7 @@
             setTimeout(() => {
                 toast.classList.remove('opacity-100', 'translate-y-0');
                 toast.classList.add('opacity-0', 'pointer-events-none', 'translate-y-[-10px]');
-            }, 2500);
+            }, 2200);
         }
 
         function escapeHTML(str) {
