@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Roblox 2D Obby: Паркур та Друзі</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap');
+        
+        * {
+            font-family: 'Fredoka', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        #gameCanvas {
+            background: linear-gradient(to bottom, #38bdf8, #818cf8);
+            touch-action: none;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #3b82f6;
+            border-radius: 4px;
+        }
+
+        .btn-bounce:active {
+            transform: scale(0.95);
+        }
+
+        .chat-bubble {
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-white overflow-hidden h-screen w-screen flex flex-col">
+
+    <!-- TOP BAR / NAVIGATION -->
+    <header class="bg-slate-800/95 backdrop-blur-md border-b border-slate-700 h-14 px-4 flex items-center justify-between z-20 shrink-0">
+        <div class="flex items-center gap-3">
+            <div class="bg-gradient-to-tr from-red-500 to-orange-500 w-9 h-9 rounded-lg flex items-center justify-center font-bold text-xl shadow-lg transform rotate-3">
+                R
+            </div>
+            <span class="font-bold text-lg sm:text-xl tracking-wide hidden sm:inline text-slate-100">Roblox 2D Obby Parkour</span>
+        </div>
+
+        <!-- Current Server & Level Stats -->
+        <div class="flex items-center gap-3 bg-slate-900/70 px-3 py-1.5 rounded-full border border-slate-700/60 text-xs sm:text-sm">
+            <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span id="currentServerLabel" class="font-semibold text-emerald-400">Server #1 (Easy Obby)</span>
+            </div>
+            <div class="h-4 w-[1px] bg-slate-700"></div>
+            <div class="flex items-center gap-1 font-bold text-orange-400">
+                <i class="fa-solid fa-flag"></i>
+                <span>Етап: <span id="stageLabel">1</span></span>
+            </div>
+            <div class="h-4 w-[1px] bg-slate-700"></div>
+            <div class="flex items-center gap-1.5 text-yellow-400 font-bold">
+                <i class="fa-solid fa-star"></i>
+                <span id="starCount">0</span>
+            </div>
+            <div class="h-4 w-[1px] bg-slate-700"></div>
+            <div class="flex items-center gap-1.5 text-cyan-300 font-semibold font-mono">
+                <i class="fa-solid fa-stopwatch text-xs"></i>
+                <span id="timerLabel">00:00</span>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex items-center gap-2">
+            <button onclick="toggleModal('avatarModal')" class="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded-lg text-sm font-semibold flex items-center gap-2 transition btn-bounce">
+                <i class="fa-solid fa-user-gear text-purple-400"></i>
+                <span class="hidden md:inline">Персонаж</span>
+            </button>
+            <button onclick="toggleModal('friendsModal')" class="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded-lg text-sm font-semibold flex items-center gap-2 transition btn-bounce relative">
+                <i class="fa-solid fa-user-group text-blue-400"></i>
+                <span class="hidden md:inline">Друзі</span>
+                <span id="onlineFriendsBadge" class="absolute -top-1 -right-1 bg-blue-500 text-xs text-white rounded-full w-4 h-4 flex items-center justify-center font-bold">2</span>
+            </button>
+            <button onclick="toggleModal('serversModal')" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-sm font-semibold flex items-center gap-2 transition btn-bounce shadow-md shadow-blue-600/30">
+                <i class="fa-solid fa-server"></i>
+                <span class="hidden md:inline">Сервери</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- MAIN GAME AREA -->
+    <div class="relative flex-1 w-full overflow-hidden">
+
+        <!-- Canvas Game Window -->
+        <canvas id="gameCanvas" class="w-full h-full block cursor-crosshair"></canvas>
+
+        <!-- TOP RIGHT: ONLINE PLAYERS LEADERBOARD -->
+        <div class="absolute top-4 right-4 bg-slate-900/80 backdrop-blur-md border border-slate-700/80 rounded-xl p-3 w-48 sm:w-56 text-xs shadow-xl hidden sm:block">
+            <div class="flex justify-between items-center mb-2 pb-1 border-b border-slate-700/60 font-bold text-slate-300">
+                <span>Гравці в Obby</span>
+                <span id="playerCountLabel" class="text-blue-400">1/8</span>
+            </div>
+            <ul id="serverPlayersList" class="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                <!-- Dynamic Player Rows -->
+            </ul>
+        </div>
+
+        <!-- BOTTOM LEFT: CHAT & EMOTES -->
+        <div class="absolute bottom-4 left-4 z-10 flex flex-col gap-2 max-w-xs sm:max-w-sm w-full">
+            <!-- Emote Bar -->
+            <div class="flex gap-2 bg-slate-900/80 backdrop-blur-md border border-slate-700/80 p-1.5 rounded-xl w-fit">
+                <button onclick="triggerEmote('👋 Паркур!')" class="hover:bg-slate-700/80 p-2 rounded-lg text-lg transition btn-bounce" title="Wave">👋</button>
+                <button onclick="triggerEmote('💃 Танець!')" class="hover:bg-slate-700/80 p-2 rounded-lg text-lg transition btn-bounce" title="Dance">💃</button>
+                <button onclick="triggerEmote('🦘 Легко!')" class="hover:bg-slate-700/80 p-2 rounded-lg text-lg transition btn-bounce" title="Easy">🦘</button>
+                <button onclick="triggerEmote('🔥 Паркур бог!')" class="hover:bg-slate-700/80 p-2 rounded-lg text-lg transition btn-bounce" title="Fire">🔥</button>
+            </div>
+
+            <!-- Chat Box -->
+            <div class="bg-slate-900/85 backdrop-blur-md border border-slate-700/80 rounded-xl p-2.5 shadow-2xl flex flex-col gap-2">
+                <div id="chatMessages" class="h-24 overflow-y-auto space-y-1 text-xs text-slate-200 pr-1 flex flex-col-reverse">
+                    <!-- Chat Messages Go Here -->
+                </div>
+                <form id="chatForm" onsubmit="sendChatMessage(event)" class="flex gap-2">
+                    <input type="text" id="chatInput" placeholder="Напишіть у чат паркуру..." class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500 flex-1">
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition">
+                        <i class="fa-solid fa-paper-plane"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- TOUCH CONTROLS (Mobile Only) -->
+        <div class="absolute bottom-6 right-6 md:hidden z-10 flex gap-3 items-end opacity-90">
+            <button id="btnLeft" class="w-14 h-14 bg-slate-800/90 border-2 border-slate-600 text-white text-2xl rounded-2xl flex items-center justify-center active:bg-blue-600 shadow-lg"><i class="fa-solid fa-arrow-left"></i></button>
+            <button id="btnRight" class="w-14 h-14 bg-slate-800/90 border-2 border-slate-600 text-white text-2xl rounded-2xl flex items-center justify-center active:bg-blue-600 shadow-lg"><i class="fa-solid fa-arrow-right"></i></button>
+            <button id="btnJump" class="w-16 h-16 bg-blue-600 border-2 border-blue-400 text-white text-2xl rounded-2xl flex items-center justify-center active:bg-blue-500 shadow-xl ml-2"><i class="fa-solid fa-angles-up"></i></button>
+        </div>
+
+        <!-- NOTIFICATION TOAST -->
+        <div id="toast" class="absolute top-6 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-4 py-2 rounded-xl shadow-xl border border-blue-400 font-semibold text-sm transition-all duration-300 opacity-0 pointer-events-none translate-y-[-10px] z-50">
+            Повідомлення
+        </div>
+    </div>
+
+    <!-- MODAL: AVATAR SELECT -->
+    <div id="avatarModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+            <button onclick="toggleModal('avatarModal')" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <h2 class="text-xl font-bold mb-1 text-slate-100">Обери Персонажа</h2>
+            <p class="text-xs text-slate-400 mb-4">Вибери героя для проходження паркуру</p>
+
+            <div class="grid grid-cols-2 gap-3" id="avatarGrid">
+                <!-- Dynamic Character Cards -->
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: FRIENDS -->
+    <div id="friendsModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+            <button onclick="toggleModal('friendsModal')" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <h2 class="text-xl font-bold mb-1 text-slate-100 flex items-center gap-2">
+                <i class="fa-solid fa-user-group text-blue-400"></i> Список Друзів
+            </h2>
+            <p class="text-xs text-slate-400 mb-4">Приєднуйся до друзів на їхні сервери Obby!</p>
+
+            <!-- Add Friend Input -->
+            <div class="flex gap-2 mb-4">
+                <input type="text" id="addFriendInput" placeholder="Ім'я друга..." class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500 flex-1">
+                <button onclick="addFriend()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-sm font-bold transition btn-bounce">
+                    Додати
+                </button>
+            </div>
+
+            <!-- Friends List -->
+            <div id="friendsList" class="space-y-2 max-h-60 overflow-y-auto pr-1">
+                <!-- Dynamic Friends Items -->
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: SERVERS -->
+    <div id="serversModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+            <button onclick="toggleModal('serversModal')" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <h2 class="text-xl font-bold mb-1 text-slate-100 flex items-center gap-2">
+                <i class="fa-solid fa-server text-emerald-400"></i> Сервери Паркуру (Obby)
+            </h2>
+            <p class="text-xs text-slate-400 mb-4">Обери рівень складності або режим</p>
+
+            <div id="serversList" class="space-y-3 max-h-64 overflow-y-auto pr-1">
+                <!-- Dynamic Servers List -->
+            </div>
+        </div>
+    </div>
+
+    <!-- GAME LOGIC -->
+    <script>
+        // --- CHARACTERS CONFIGURATION ---
+        const CHARACTERS = {
+            fibi: {
+                id: 'fibi',
+                name: 'Фібі',
+                role: 'Мила собачка 🐶',
+                color: '#ec4899', // Pink
+                icon: '🐶',
+                bgColor: 'bg-pink-500/20',
+                borderColor: 'border-pink-500'
+            },
+            doggy: {
+                id: 'doggy',
+                name: 'Собачка',
+                role: 'Песик Спот 🐕',
+                color: '#f97316', // Orange
+                icon: '🐕',
+                bgColor: 'bg-orange-500/20',
+                borderColor: 'border-orange-500'
+            },
+            blue: {
+                id: 'blue',
+                name: 'Блю',
+                role: 'Синій папуга 🦜',
+                color: '#3b82f6', // Blue
+                icon: '🦜',
+                bgColor: 'bg-blue-500/20',
+                borderColor: 'border-blue-500'
+            },
+            anya: {
+                id: 'anya',
+                name: 'Аня Іщук',
+                role: 'Топ блогерка 👑',
+                color: '#a855f7', // Purple
+                icon: '👑',
+                bgColor: 'bg-purple-500/20',
+                borderColor: 'border-purple-500'
+            }
+        };
+
+        // --- SERVERS CONFIGURATION ---
+        const SERVERS = [
+            { id: 'server1', name: 'Server #1 (Easy Obby)', desc: 'Легкий паркур для початківців', max: 8, sky: ['#38bdf8', '#818cf8'] },
+            { id: 'server2', name: 'Server #2 (Hard Obby)', desc: 'Складні стрибки та рухомі лавові блоки', max: 8, sky: ['#f43f5e', '#881337'] },
+            { id: 'server3', name: 'Server #3 (Speedrun)', desc: 'Швидкісний режим із пружинами', max: 8, sky: ['#10b981', '#064e3b'] }
+        ];
+
+        // --- GAME STATE ---
+        let currentServerId = 'server1';
+        let startTime = Date.now();
+        
+        // Physics Player
+        let player = {
+            x: 100,
+            y: 300,
+            vx: 0,
+            vy: 0,
+            width: 32,
+            height: 32,
+            speed: 5.5,
+            jumpPower: 12.5,
+            isGrounded: false,
+            character: 'fibi',
+            name: 'Гравець (Ти)',
+            stage: 1,
+            stars: 0,
+            checkpoint: { x: 100, y: 300 },
+            chatBubble: null,
+            chatTimer: null,
+            emote: null,
+            emoteTimer: null
+        };
+
+        // Camera Offset
+        let cameraX = 0;
+
+        // Simulated Friends Data
+        let friends = [
+            { id: 'f1', name: 'Саша', character: 'blue', online: true, serverId: 'server2' },
+            { id: 'f2', name: 'Віка', character: 'anya', online: true, serverId: 'server1' },
+            { id: 'f3', name: 'Макс', character: 'doggy', online: true, serverId: 'server3' }
+        ];
+
+        // Other players on server
+        let otherPlayers = [
+            { id: 'p1', name: 'Віка', character: 'anya', serverId: 'server1', x: 450, y: 300 },
+            { id: 'p2', name: 'Саша', character: 'blue', serverId: 'server2', x: 600, y: 250 },
+            { id: 'p3', name: 'Макс', character: 'doggy', serverId: 'server3', x: 800, y: 200 }
+        ];
+
+        // Controls
+        const keys = { left: false, right: false, jump: false };
+
+        // Canvas Setup
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Level Map Objects
+        let platforms = [];
+        let lavas = [];
+        let bouncers = [];
+        let checkpoints = [];
+        let collectibles = [];
+
+        // --- INITIALIZATION ---
+        window.onload = () => {
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+
+            setupControls();
+            buildParkourCourse();
+            renderAvatarModal();
+            renderFriendsModal();
+            renderServersModal();
+            updateServerUI();
+
+            addChatMessage('Система', 'Ласкаво просимо в Roblox Obby! Проходь паркур та приєднуйся до друзів.', true);
+
+            requestAnimationFrame(gameLoop);
+        };
+
+        function resizeCanvas() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+        }
+
+        // --- PARKOUR MAP GENERATOR ---
+        function buildParkourCourse() {
+            platforms = [];
+            lavas = [];
+            bouncers = [];
+            checkpoints = [];
+            collectibles = [];
+
+            let curX = 50;
+            let curY = 400;
+
+            // Spawn Platform
+            platforms.push({ x: curX, y: curY, w: 200, h: 30, color: '#475569' });
+            checkpoints.push({ x: curX + 80, y: curY - 40, stage: 1, active: true });
+
+            // Generate 10 Stages of Obby
+            for (let stage = 1; stage <= 10; stage++) {
+                curX += 220;
+                
+                // Varied parkour elements depending on stage
+                if (stage % 3 === 1) {
+                    // Moving platform & jump gap
+                    platforms.push({ x: curX, y: curY - 30, w: 100, h: 20, color: '#3b82f6', isMoving: true, startX: curX, range: 80, speed: 1.5, dir: 1 });
+                    curX += 160;
+                    platforms.push({ x: curX, y: curY - 60, w: 120, h: 20, color: '#3b82f6' });
+                } else if (stage % 3 === 2) {
+                    // Lava hurdle
+                    platforms.push({ x: curX, y: curY, w: 220, h: 20, color: '#475569' });
+                    lavas.push({ x: curX + 60, y: curY - 15, w: 100, h: 15 });
+                    curX += 120;
+                } else {
+                    // Trampoline boost stage
+                    platforms.push({ x: curX, y: curY, w: 100, h: 20, color: '#475569' });
+                    bouncers.push({ x: curX + 40, y: curY - 15, w: 30, h: 15 });
+                    curX += 150;
+                    curY -= 80;
+                    platforms.push({ x: curX, y: curY, w: 120, h: 20, color: '#3b82f6' });
+                }
+
+                // Stage Checkpoint
+                curX += 140;
+                platforms.push({ x: curX, y: curY, w: 140, h: 25, color: '#1e293b' });
+                checkpoints.push({ x: curX + 50, y: curY - 40, stage: stage + 1, active: false });
+
+                // Star Gem Collectible
+                collectibles.push({ x: curX + 60, y: curY - 70, size: 12, collected: false });
+            }
+
+            // End Golden Platform
+            curX += 180;
+            platforms.push({ x: curX, y: curY - 20, w: 250, h: 30, color: '#eab308' });
+        }
+
+        // --- GAME LOOP ---
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // --- PHYSICS & LOGIC UPDATE ---
+        function update() {
+            // Horizontal Movement
+            if (keys.left) player.vx = -player.speed;
+            else if (keys.right) player.vx = player.speed;
+            else player.vx *= 0.8; // friction
+
+            // Jump
+            if (keys.jump && player.isGrounded) {
+                player.vy = -player.jumpPower;
+                player.isGrounded = false;
+            }
+
+            // Apply Gravity
+            player.vy += 0.6; // Gravity constant
+
+            // Move Player Horizontal
+            player.x += player.vx;
+
+            // Horizontal moving platforms logic
+            platforms.forEach(p => {
+                if (p.isMoving) {
+                    p.x += p.speed * p.dir;
+                    if (p.x > p.startX + p.range || p.x < p.startX) p.dir *= -1;
+                }
+            });
+
+            // Collision with Platforms
+            player.isGrounded = false;
+            platforms.forEach(p => {
+                if (
+                    player.x + player.width > p.x &&
+                    player.x < p.x + p.w &&
+                    player.y + player.height >= p.y &&
+                    player.y + player.height <= p.y + p.h + player.vy &&
+                    player.vy >= 0
+                ) {
+                    player.y = p.y - player.height;
+                    player.vy = 0;
+                    player.isGrounded = true;
+
+                    // Carry player if on moving platform
+                    if (p.isMoving) player.x += p.speed * p.dir;
+                }
+            });
+
+            // Vertical position update
+            player.y += player.vy;
+
+            // Check Bouncers (Trampolines)
+            bouncers.forEach(b => {
+                if (
+                    player.x + player.width > b.x &&
+                    player.x < b.x + b.w &&
+                    player.y + player.height >= b.y &&
+                    player.y <= b.y + b.h
+                ) {
+                    player.vy = -17; // Mega Jump
+                    showToast('Супер Стрибок! 🦘');
+                }
+            });
+
+            // Check Lava Collision (Death / Reset to Checkpoint)
+            lavas.forEach(l => {
+                if (
+                    player.x + player.width > l.x &&
+                    player.x < l.x + l.w &&
+                    player.y + player.height > l.y &&
+                    player.y < l.y + l.h
+                ) {
+                    respawnPlayer();
+                    showToast('Обережно, Лава! 💥');
+                }
+            });
+
+            // Fall off World Reset
+            if (player.y > canvas.height + 200) {
+                respawnPlayer();
+            }
+
+            // Check Checkpoints Collision
+            checkpoints.forEach(cp => {
+                if (Math.abs(player.x - cp.x) < 40 && Math.abs(player.y - cp.y) < 50) {
+                    if (!cp.active) {
+                        cp.active = true;
+                        player.checkpoint = { x: cp.x, y: cp.y };
+                        player.stage = cp.stage;
+                        document.getElementById('stageLabel').innerText = player.stage;
+                        showToast(`Чекпоінт! Етап ${player.stage} 🚩`);
+                    }
+                }
+            });
+
+            // Collectible Stars Collision
+            collectibles.forEach(c => {
+                if (!c.collected && Math.hypot(player.x - c.x, player.y - c.y) < 30) {
+                    c.collected = true;
+                    player.stars += 1;
+                    document.getElementById('starCount').innerText = player.stars;
+                    showToast('+1 Зірочка! ⭐');
+                }
+            });
+
+            // Update Smooth Camera Follow
+            cameraX = player.x - canvas.width / 3;
+
+            // Update Speedrun Timer
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            const mins = String(Math.floor(elapsed / 60)).padStart(2, '0');
+            const secs = String(elapsed % 60).padStart(2, '0');
+            document.getElementById('timerLabel').innerText = `${mins}:${secs}`;
+        }
+
+        function respawnPlayer() {
+            player.x = player.checkpoint.x;
+            player.y = player.checkpoint.y - 10;
+            player.vx = 0;
+            player.vy = 0;
+        }
+
+        // --- RENDER GAME CANVAS ---
+        function draw() {
+            // Dynamic Sky Gradient based on Server
+            const server = SERVERS.find(s => s.id === currentServerId);
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, server.sky[0]);
+            gradient.addColorStop(1, server.sky[1]);
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.save();
+            ctx.translate(-cameraX, 0); // Apply Camera Offset
+
+            // 1. Draw Platforms
+            platforms.forEach(p => {
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.roundRect(p.x, p.y, p.w, p.h, 6);
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+                ctx.stroke();
+            });
+
+            // 2. Draw Lava Blocks
+            lavas.forEach(l => {
+                ctx.fillStyle = '#ef4444';
+                ctx.fillRect(l.x, l.y, l.w, l.h);
+                ctx.fillStyle = '#fb923c';
+                ctx.fillRect(l.x, l.y, l.w, 4); // Lava Glow Top
+            });
+
+            // 3. Draw Bouncers (Trampolines)
+            bouncers.forEach(b => {
+                ctx.fillStyle = '#a855f7';
+                ctx.beginPath();
+                ctx.roundRect(b.x, b.y, b.w, b.h, 4);
+                ctx.fill();
+                ctx.fillStyle = '#c084fc';
+                ctx.fillRect(b.x + 4, b.y, b.w - 8, 3);
+            });
+
+            // 4. Draw Checkpoints
+            checkpoints.forEach(cp => {
+                // Flag Pole
+                ctx.fillStyle = '#94a3b8';
+                ctx.fillRect(cp.x, cp.y, 4, 35);
+
+                // Flag Banner
+                ctx.fillStyle = cp.active ? '#10b981' : '#f43f5e';
+                ctx.beginPath();
+                ctx.moveTo(cp.x + 4, cp.y);
+                ctx.lineTo(cp.x + 24, cp.y + 10);
+                ctx.lineTo(cp.x + 4, cp.y + 20);
+                ctx.fill();
+            });
+
+            // 5. Draw Collectibles (Stars)
+            collectibles.forEach(c => {
+                if (!c.collected) {
+                    ctx.font = '18px Fredoka';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('⭐', c.x, c.y);
+                }
+            });
+
+            // 6. Draw Other Players on Same Server
+            otherPlayers.forEach(p => {
+                if (p.serverId === currentServerId) {
+                    drawCharacter(p.x, p.y, p.character, p.name, false, null, null);
+                }
+            });
+
+            // 7. Draw Main Player
+            drawCharacter(player.x, player.y, player.character, player.name, true, player.chatBubble, player.emote);
+
+            ctx.restore();
+        }
+
+        // --- DRAW CHARACTER AVATAR ---
+        function drawCharacter(x, y, charKey, name, isMe, chatMsg, emote) {
+            const char = CHARACTERS[charKey] || CHARACTERS.fibi;
+
+            ctx.save();
+
+            // Character Body Container
+            ctx.fillStyle = char.color;
+            ctx.beginPath();
+            ctx.arc(x + 16, y + 16, 18, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Border Highlight
+            ctx.strokeStyle = isMe ? '#ffffff' : 'rgba(0,0,0,0.4)';
+            ctx.lineWidth = isMe ? 3 : 2;
+            ctx.stroke();
+
+            // Emoji Face
+            ctx.font = '18px Fredoka';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(char.icon, x + 16, y + 17);
+
+            // Player Name & Badge Overhead
+            ctx.font = 'bold 12px Fredoka';
+            const textWidth = ctx.measureText(name).width;
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.8)';
+            ctx.roundRect(x + 16 - textWidth / 2 - 6, y - 24, textWidth + 12, 18, 6);
+            ctx.fill();
+
+            ctx.fillStyle = isMe ? '#60a5fa' : '#ffffff';
+            ctx.fillText(name, x + 16, y - 12);
+
+            // Emote Overhead
+            if (emote) {
+                ctx.font = '22px Fredoka';
+                ctx.fillText(emote, x + 36, y - 10);
+            }
+
+            // Chat Bubble
+            if (chatMsg) {
+                ctx.font = '12px Fredoka';
+                const msgWidth = ctx.measureText(chatMsg).width;
+                const bubbleW = msgWidth + 16;
+                const bubbleH = 24;
+                const bubbleX = x + 16 - bubbleW / 2;
+                const bubbleY = y - 56;
+
+                ctx.fillStyle = '#ffffff';
+                ctx.roundRect(bubbleX, bubbleY, bubbleW, bubbleH, 8);
+                ctx.fill();
+
+                ctx.fillStyle = '#0f172a';
+                ctx.textAlign = 'center';
+                ctx.fillText(chatMsg, x + 16, bubbleY + 16);
+            }
+
+            ctx.restore();
+        }
+
+        // --- CONTROLS SETUP ---
+        function setupControls() {
+            window.addEventListener('keydown', e => {
+                if (document.activeElement.tagName === 'INPUT') return;
+                if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') keys.left = true;
+                if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') keys.right = true;
+                if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp' || e.key === ' ') keys.jump = true;
+            });
+
+            window.addEventListener('keyup', e => {
+                if (document.activeElement.tagName === 'INPUT') return;
+                if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') keys.left = false;
+                if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') keys.right = false;
+                if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp' || e.key === ' ') keys.jump = false;
+            });
+
+            // Touch Joystick Buttons
+            const bindTouch = (id, keyName) => {
+                const btn = document.getElementById(id);
+                btn.addEventListener('touchstart', (e) => { e.preventDefault(); keys[keyName] = true; });
+                btn.addEventListener('touchend', (e) => { e.preventDefault(); keys[keyName] = false; });
+                btn.addEventListener('mousedown', () => keys[keyName] = true);
+                btn.addEventListener('mouseup', () => keys[keyName] = false);
+            };
+
+            bindTouch('btnLeft', 'left');
+            bindTouch('btnRight', 'right');
+            bindTouch('btnJump', 'jump');
+        }
+
+        // --- CHAT SYSTEM ---
+        function sendChatMessage(e) {
+            e.preventDefault();
+            const input = document.getElementById('chatInput');
+            const text = input.value.trim();
+
+            if (text.length > 0) {
+                addChatMessage(player.name, text, false);
+
+                player.chatBubble = text;
+                clearTimeout(player.chatTimer);
+                player.chatTimer = setTimeout(() => {
+                    player.chatBubble = null;
+                }, 4000);
+
+                input.value = '';
+            }
+        }
+
+        function addChatMessage(author, text, isSystem = false) {
+            const chatBox = document.getElementById('chatMessages');
+            const msgEl = document.createElement('div');
+            msgEl.className = `chat-bubble text-xs ${isSystem ? 'text-yellow-400 font-semibold' : ''}`;
+            msgEl.innerHTML = `<span class="font-bold opacity-80">${author}:</span> ${escapeHTML(text)}`;
+            chatBox.prepend(msgEl);
+        }
+
+        function triggerEmote(emoteText) {
+            player.emote = emoteText.split(' ')[0];
+            addChatMessage(player.name, emoteText);
+
+            clearTimeout(player.emoteTimer);
+            player.emoteTimer = setTimeout(() => {
+                player.emote = null;
+            }, 3000);
+        }
+
+        // --- SERVER SYSTEM ---
+        function switchServer(serverId) {
+            currentServerId = serverId;
+            const server = SERVERS.find(s => s.id === serverId);
+
+            // Reset player to start
+            player.checkpoint = { x: 100, y: 300 };
+            player.stage = 1;
+            document.getElementById('stageLabel').innerText = 1;
+            respawnPlayer();
+
+            updateServerUI();
+            showToast(`Перехід на ${server.name} 🚀`);
+            addChatMessage('Система', `Ви приєдналися до сервера ${server.name}`);
+            toggleModal('serversModal', false);
+        }
+
+        function updateServerUI() {
+            const server = SERVERS.find(s => s.id === currentServerId);
+            document.getElementById('currentServerLabel').innerText = server.name;
+
+            const currentPlayers = [
+                player,
+                ...otherPlayers.filter(p => p.serverId === currentServerId)
+            ];
+
+            document.getElementById('playerCountLabel').innerText = `${currentPlayers.length}/${server.max}`;
+
+            const listEl = document.getElementById('serverPlayersList');
+            listEl.innerHTML = '';
+            currentPlayers.forEach(p => {
+                const char = CHARACTERS[p.character] || CHARACTERS.fibi;
+                const li = document.createElement('li');
+                li.className = 'flex items-center justify-between bg-slate-800/60 px-2 py-1 rounded-lg border border-slate-700/50';
+                li.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <span>${char.icon}</span>
+                        <span class="font-medium text-slate-200 truncate max-w-[100px]">${escapeHTML(p.name)}</span>
+                    </div>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded ${p.id === undefined ? 'bg-blue-500/20 text-blue-400' : 'bg-slate-700 text-slate-400'}">
+                        ${p.id === undefined ? 'Ти' : 'Гравець'}
+                    </span>
+                `;
+                listEl.appendChild(li);
+            });
+        }
+
+        // --- FRIENDS SYSTEM ---
+        function joinFriendServer(friendId) {
+            const friend = friends.find(f => f.id === friendId);
+            if (!friend || !friend.online) {
+                showToast('Друг зараз офлайн! ❌');
+                return;
+            }
+
+            if (friend.serverId === currentServerId) {
+                showToast(`Ви вже на одному сервері з ${friend.name}! 😊`);
+                toggleModal('friendsModal', false);
+                return;
+            }
+
+            switchServer(friend.serverId);
+            toggleModal('friendsModal', false);
+            showToast(`Телепортація до друга ${friend.name}! 🌟`);
+        }
+
+        function addFriend() {
+            const input = document.getElementById('addFriendInput');
+            const name = input.value.trim();
+
+            if (name.length > 0) {
+                const randomCharKeys = Object.keys(CHARACTERS);
+                const randomChar = randomCharKeys[Math.floor(Math.random() * randomCharKeys.length)];
+                const randomServer = SERVERS[Math.floor(Math.random() * SERVERS.length)].id;
+
+                const newFriend = {
+                    id: `f_${Date.now()}`,
+                    name: name,
+                    character: randomChar,
+                    online: true,
+                    serverId: randomServer
+                };
+
+                friends.push(newFriend);
+                input.value = '';
+                renderFriendsModal();
+                showToast(`Друга ${name} додано! 🎉`);
+            }
+        }
+
+        // --- MODAL RENDERERS ---
+        function renderAvatarModal() {
+            const container = document.getElementById('avatarGrid');
+            container.innerHTML = '';
+
+            Object.values(CHARACTERS).forEach(char => {
+                const isSelected = player.character === char.id;
+                const card = document.createElement('div');
+                card.className = `p-4 rounded-xl border-2 cursor-pointer transition flex flex-col items-center gap-2 ${char.bgColor} ${isSelected ? 'border-blue-500 scale-105 shadow-lg shadow-blue-500/20' : 'border-slate-700 hover:border-slate-500'}`;
+                card.onclick = () => selectCharacter(char.id);
+
+                card.innerHTML = `
+                    <div class="text-4xl mb-1">${char.icon}</div>
+                    <div class="font-bold text-center text-sm text-slate-100">${char.name}</div>
+                    <div class="text-[11px] text-slate-400 text-center">${char.role}</div>
+                    ${isSelected ? '<span class="text-[10px] bg-blue-500 text-white px-2 py-0.5 rounded-full font-bold mt-1">Обрано</span>' : ''}
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function selectCharacter(charId) {
+            player.character = charId;
+            renderAvatarModal();
+            updateServerUI();
+            showToast(`Персонажа змінено на ${CHARACTERS[charId].name}! ✨`);
+            toggleModal('avatarModal', false);
+        }
+
+        function renderFriendsModal() {
+            const container = document.getElementById('friendsList');
+            container.innerHTML = '';
+
+            const onlineCount = friends.filter(f => f.online).length;
+            document.getElementById('onlineFriendsBadge').innerText = onlineCount;
+
+            friends.forEach(f => {
+                const char = CHARACTERS[f.character] || CHARACTERS.fibi;
+                const server = SERVERS.find(s => s.id === f.serverId);
+
+                const item = document.createElement('div');
+                item.className = 'flex items-center justify-between bg-slate-900/60 border border-slate-700/70 p-3 rounded-xl';
+                item.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <div class="text-2xl">${char.icon}</div>
+                        <div>
+                            <div class="font-bold text-sm text-slate-100 flex items-center gap-2">
+                                ${escapeHTML(f.name)}
+                                <span class="w-2 h-2 rounded-full ${f.online ? 'bg-emerald-500' : 'bg-slate-500'}"></span>
+                            </div>
+                            <div class="text-xs text-slate-400">
+                                ${f.online ? `Сервер: <span class="text-emerald-400">${server ? server.name : 'Obby'}</span>` : 'Офлайн'}
+                            </div>
+                        </div>
+                    </div>
+                    ${f.online ? `
+                        <button onclick="joinFriendServer('${f.id}')" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition btn-bounce flex items-center gap-1.5">
+                            <i class="fa-solid fa-right-to-bracket"></i> Join
+                        </button>
+                    ` : ''}
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function renderServersModal() {
+            const container = document.getElementById('serversList');
+            container.innerHTML = '';
+
+            SERVERS.forEach(s => {
+                const isCurrent = s.id === currentServerId;
+                const activeCount = isCurrent ? 
+                    1 + otherPlayers.filter(p => p.serverId === s.id).length :
+                    otherPlayers.filter(p => p.serverId === s.id).length;
+
+                const card = document.createElement('div');
+                card.className = `p-3.5 rounded-xl border flex items-center justify-between ${isCurrent ? 'bg-blue-900/30 border-blue-500' : 'bg-slate-900/60 border-slate-700 hover:border-slate-600'}`;
+                card.innerHTML = `
+                    <div>
+                        <div class="font-bold text-sm text-slate-100 flex items-center gap-2">
+                            ${s.name}
+                            ${isCurrent ? '<span class="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full">Поточний</span>' : ''}
+                        </div>
+                        <div class="text-xs text-slate-400 mt-0.5">${s.desc}</div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs text-slate-400 font-medium"><i class="fa-solid fa-user text-slate-500"></i> ${activeCount}/${s.max}</span>
+                        <button onclick="switchServer('${s.id}')" ${isCurrent ? 'disabled' : ''} class="${isCurrent ? 'bg-slate-700 text-slate-500 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-500 text-white'} text-xs font-bold px-3 py-1.5 rounded-lg transition btn-bounce">
+                            ${isCurrent ? 'Активний' : 'Увійти'}
+                        </button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // --- UTILS ---
+        function toggleModal(modalId, forceState = null) {
+            const modal = document.getElementById(modalId);
+            if (forceState !== null) {
+                if (forceState) modal.classList.remove('hidden');
+                else modal.classList.add('hidden');
+            } else {
+                modal.classList.toggle('hidden');
+            }
+
+            if (modalId === 'friendsModal') renderFriendsModal();
+            if (modalId === 'serversModal') renderServersModal();
+        }
+
+        function showToast(text) {
+            const toast = document.getElementById('toast');
+            toast.innerText = text;
+            toast.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-[-10px]');
+            toast.classList.add('opacity-100', 'translate-y-0');
+
+            setTimeout(() => {
+                toast.classList.remove('opacity-100', 'translate-y-0');
+                toast.classList.add('opacity-0', 'pointer-events-none', 'translate-y-[-10px]');
+            }, 2500);
+        }
+
+        function escapeHTML(str) {
+            return str.replace(/[&<>'"]/g, 
+                tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+            );
+        }
+    </script>
+</body>
+</html>
