@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dark Escape 3D: Mobile Edition</title>
+    <title>Dark Escape 3D: Fixed Mobile</title>
     <style>
         * {
             box-sizing: border-box;
@@ -81,7 +81,7 @@
             box-shadow: 0 0 20px rgba(255, 65, 108, 0.8);
         }
 
-        /* Mobile Controls - Roblox Style */
+        /* Mobile Controls */
         #mobile-controls {
             position: absolute;
             bottom: 25px;
@@ -96,7 +96,7 @@
             pointer-events: none;
         }
 
-        /* Smooth Virtual Touch Joystick */
+        /* Joystick */
         #joystick-base {
             width: 120px;
             height: 120px;
@@ -143,7 +143,7 @@
             border-color: #ff416c;
         }
 
-        /* Touch Swipe Look Zone */
+        /* Touch Look Zone */
         #touch-look-zone {
             position: absolute;
             top: 0;
@@ -257,8 +257,8 @@
         }
         @keyframes flashHorror {
             0% { background-color: #000; }
-            50% { background-color: #500000; }
-            100% { background-color: #b00000; }
+            50% { background-color: #600000; }
+            100% { background-color: #c00000; }
         }
         #screamer-face {
             width: 320px;
@@ -317,7 +317,6 @@
                 <div id="joystick-stick"></div>
             </div>
             <div class="action-btns">
-                <div class="action-btn" id="btn-light">🔦</div>
                 <div class="action-btn" id="btn-sprint">⚡</div>
             </div>
         </div>
@@ -326,7 +325,7 @@
         <div class="modal-overlay" id="auth-modal">
             <div class="modal-card">
                 <div class="modal-title">Dark Escape 3D</div>
-                <div class="modal-subtitle">Акодація під телефон | 100 Ключів та 10 Дверей</div>
+                <div class="modal-subtitle">100 Ключів та 10 Дверей</div>
                 
                 <div class="input-group">
                     <label for="username">Нікнейм</label>
@@ -364,6 +363,8 @@
         const ctx = canvas.getContext('2d');
 
         const MAP_SIZE = 21;
+        const PLAYER_RADIUS = 0.25; // Радіус гравця для плавного ковзання вздовж стін
+
         const state = {
             username: 'Гравець',
             isTeamMode: false,
@@ -404,7 +405,7 @@
             [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
         ];
 
-        // Shuffle Empty Slots
+        // Empty slots shuffle
         const emptySlots = [];
         for(let r=1; r<MAP_SIZE-1; r++) {
             for(let c=1; c<MAP_SIZE-1; c++) {
@@ -436,39 +437,71 @@
             setTimeout(() => { toast.style.display = 'none'; }, 2000);
         }
 
-        // Audio Screamer
+        // ---🔊 ВІДНОВЛЕНИЙ І ЗМІЦНЕНИЙ ЗВУК СКРИМЕРА ---
         let audioCtx = null;
-        function playScreamerSound() {
-            try {
-                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                if (audioCtx.state === 'suspended') audioCtx.resume();
 
-                const now = audioCtx.currentTime;
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(35, now);
-                osc.frequency.linearRampToValueAtTime(140, now + 0.3);
-                osc.frequency.exponentialRampToValueAtTime(20, now + 1.4);
-
-                gain.gain.setValueAtTime(1.5, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 1.4);
-
-                osc.connect(gain);
-                gain.connect(audioCtx.destination);
-                osc.start(now);
-                osc.stop(now + 1.4);
-            } catch(e){}
+        function initAudioOnUserInteraction() {
+            if (!audioCtx) {
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                if (AudioContextClass) audioCtx = new AudioContextClass();
+            }
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
         }
 
-        // Mobile Virtual Joystick Setup
+        window.addEventListener('touchstart', initAudioOnUserInteraction, { once: true });
+        window.addEventListener('click', initAudioOnUserInteraction, { once: true });
+
+        function playScreamerSound() {
+            initAudioOnUserInteraction();
+            if (!audioCtx) return;
+
+            try {
+                const now = audioCtx.currentTime;
+
+                // 1. Низькочастотний монструозний гул
+                const growlOsc = audioCtx.createOscillator();
+                const growlGain = audioCtx.createGain();
+                growlOsc.type = 'sawtooth';
+                growlOsc.frequency.setValueAtTime(40, now);
+                growlOsc.frequency.linearRampToValueAtTime(160, now + 0.25);
+                growlOsc.frequency.exponentialRampToValueAtTime(25, now + 1.4);
+
+                growlGain.gain.setValueAtTime(2.0, now);
+                growlGain.gain.exponentialRampToValueAtTime(0.01, now + 1.4);
+
+                growlOsc.connect(growlGain);
+                growlGain.connect(audioCtx.destination);
+                growlOsc.start(now);
+                growlOsc.stop(now + 1.4);
+
+                // 2. Різкий високий вереск
+                const screechOsc = audioCtx.createOscillator();
+                const screechGain = audioCtx.createGain();
+                screechOsc.type = 'square';
+                screechOsc.frequency.setValueAtTime(1200, now);
+                screechOsc.frequency.exponentialRampToValueAtTime(3800, now + 0.15);
+                screechOsc.frequency.linearRampToValueAtTime(300, now + 1.4);
+
+                screechGain.gain.setValueAtTime(1.5, now);
+                screechGain.gain.exponentialRampToValueAtTime(0.01, now + 1.4);
+
+                screechOsc.connect(screechGain);
+                screechGain.connect(audioCtx.destination);
+                screechOsc.start(now);
+                screechOsc.stop(now + 1.4);
+            } catch(e) {}
+        }
+
+        // --- 🕹️ СЕНСОРНИЙ ДЖОЙСТИК ТА СВАЙПИ ---
         const jBase = document.getElementById('joystick-base');
         const jStick = document.getElementById('joystick-stick');
         let jTouchId = null;
         let joyVector = { x: 0, y: 0 };
 
         jBase.addEventListener('touchstart', (e) => {
+            initAudioOnUserInteraction();
             for (let t of e.changedTouches) {
                 if (jTouchId === null) {
                     jTouchId = t.identifier;
@@ -511,12 +544,13 @@
             joyVector = { x: dx / maxDist, y: dy / maxDist };
         }
 
-        // Touch Look Swipe Control
+        // Свайп огляду
         const touchLookZone = document.getElementById('touch-look-zone');
         let lookTouchId = null;
         let lastTouchX = 0;
 
         touchLookZone.addEventListener('touchstart', (e) => {
+            initAudioOnUserInteraction();
             for (let t of e.changedTouches) {
                 if (lookTouchId === null) {
                     lookTouchId = t.identifier;
@@ -537,12 +571,12 @@
 
         touchLookZone.addEventListener('touchend', () => { lookTouchId = null; });
 
-        // Sprint button
+        // Біг
         const btnSprint = document.getElementById('btn-sprint');
-        btnSprint.addEventListener('touchstart', (e) => { e.preventDefault(); state.isSprinting = true; btnSprint.classList.add('active'); });
+        btnSprint.addEventListener('touchstart', (e) => { e.preventDefault(); initAudioOnUserInteraction(); state.isSprinting = true; btnSprint.classList.add('active'); });
         btnSprint.addEventListener('touchend', (e) => { e.preventDefault(); state.isSprinting = false; btnSprint.classList.remove('active'); });
 
-        // Team mode toggle
+        // Вибір Ані Іщук
         const teamCb = document.getElementById('team-mode-checkbox');
         const optionAnia = document.getElementById('option-ania');
 
@@ -558,6 +592,7 @@
         });
 
         document.getElementById('btn-start').addEventListener('click', () => {
+            initAudioOnUserInteraction();
             state.username = document.getElementById('username').value || 'Гравець';
             state.isTeamMode = teamCb.checked;
             const charChoice = document.getElementById('character-select').value;
@@ -582,6 +617,36 @@
             canvas.height = window.innerHeight;
         }
         window.addEventListener('resize', resizeCanvas);
+
+        // --- 🚶‍♂️ ПЛАВНИЙ РУХ ТА КОВЗАННЯ ВЗДОВЖ СТІН (БЕЗ ПРИЛИПАННЯ) ---
+        function isWallOrClosedDoor(x, y) {
+            const gridX = Math.floor(x);
+            const gridY = Math.floor(y);
+
+            if (gridX < 0 || gridX >= MAP_SIZE || gridY < 0 || gridY >= MAP_SIZE) return true;
+            if (map[gridY][gridX] === 1) return true;
+
+            const door = doors.find(d => !d.opened && d.x === gridX && d.y === gridY);
+            if (door) return true;
+
+            return false;
+        }
+
+        function movePlayerWithSliding(dx, dy) {
+            // Перевіряємо можливість руху по X (плавне ковзання)
+            const targetX = player.x + dx;
+            const checkRadiusX = dx > 0 ? PLAYER_RADIUS : -PLAYER_RADIUS;
+            if (!isWallOrClosedDoor(targetX + checkRadiusX, player.y)) {
+                player.x = targetX;
+            }
+
+            // Перевіряємо можливість руху по Y (плавне ковзання)
+            const targetY = player.y + dy;
+            const checkRadiusY = dy > 0 ? PLAYER_RADIUS : -PLAYER_RADIUS;
+            if (!isWallOrClosedDoor(player.x, targetY + checkRadiusY)) {
+                player.y = targetY;
+            }
+        }
 
         function triggerScreamer() {
             if (state.isCaptured) return;
@@ -613,33 +678,24 @@
             }, 1400);
         }
 
-        // Main Loop
+        // Ігровий цикл
         function animate() {
             if (!state.isPlaying) return;
 
             if (!state.isCaptured) {
-                let speed = state.isSprinting ? 0.06 : 0.038;
+                let speed = state.isSprinting ? 0.055 : 0.036;
 
-                // Move with Joystick
+                // Рух джойстиком
                 if (joyVector.x !== 0 || joyVector.y !== 0) {
                     const moveAngle = player.dir + Math.atan2(joyVector.y, joyVector.x);
                     const dx = Math.cos(moveAngle) * speed;
                     const dy = Math.sin(moveAngle) * speed;
 
-                    const newX = player.x + dx;
-                    const newY = player.y + dy;
-
-                    if (map[Math.floor(player.y)][Math.floor(newX)] === 0) {
-                        const door = doors.find(d => !d.opened && d.x === Math.floor(newX) && d.y === Math.floor(player.y));
-                        if (!door) player.x = newX;
-                    }
-                    if (map[Math.floor(newY)][Math.floor(player.x)] === 0) {
-                        const door = doors.find(d => !d.opened && d.x === Math.floor(player.x) && d.y === Math.floor(newY));
-                        if (!door) player.y = newY;
-                    }
+                    // Рух з ковзанням вздовж стін
+                    movePlayerWithSliding(dx, dy);
                 }
 
-                // AI Monster Chase
+                // AI Монстра
                 if (!state.isMonster) {
                     const mdx = player.x - monster.x;
                     const mdy = player.y - monster.y;
@@ -656,7 +712,7 @@
                     monster.y = player.y;
                 }
 
-                // Keys Pickups
+                // Ключі
                 keys.forEach(k => {
                     if (!k.collected && Math.hypot(player.x - k.x, player.y - k.y) < 0.6) {
                         k.collected = true;
@@ -665,7 +721,7 @@
                     }
                 });
 
-                // Doors Unlocking
+                // Двері
                 doors.forEach(d => {
                     if (!d.opened && Math.hypot(player.x - (d.x + 0.5), player.y - (d.y + 0.5)) < 1.2) {
                         if (state.keysFound >= d.requiredKeys) {
@@ -687,7 +743,7 @@
                 });
             }
 
-            // Raycasting Rendering
+            // Рендеринг 3D (Raycasting)
             ctx.fillStyle = "#020204";
             ctx.fillRect(0, 0, canvas.width, canvas.height / 2);
             ctx.fillStyle = "#111827";
