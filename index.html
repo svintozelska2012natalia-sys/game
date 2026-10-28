@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dark Escape 3D: 100 Ключів та 10 Дверей</title>
+    <title>Dark Escape 3D: Mobile Edition</title>
     <style>
         * {
             box-sizing: border-box;
@@ -12,7 +12,7 @@
             user-select: none;
             -webkit-user-select: none;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            touch-action: manipulation;
+            touch-action: none;
         }
         body, html {
             width: 100%;
@@ -35,7 +35,7 @@
             display: block;
         }
 
-        /* UI Overlay */
+        /* HUD Overlay */
         #ui-layer {
             position: absolute;
             top: 0;
@@ -46,16 +46,16 @@
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            padding: 15px;
+            padding: 12px;
             z-index: 10;
         }
         .hud-panel {
             pointer-events: auto;
             background: rgba(10, 12, 20, 0.85);
             backdrop-filter: blur(8px);
-            border: 1px solid rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.2);
             border-radius: 12px;
-            padding: 8px 14px;
+            padding: 8px 12px;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
         }
         .top-hud {
@@ -67,12 +67,12 @@
 
         #game-toast {
             position: absolute;
-            top: 75px;
+            top: 70px;
             left: 50%;
             transform: translateX(-50%);
             background: rgba(255, 65, 108, 0.95);
             color: #fff;
-            padding: 8px 20px;
+            padding: 8px 18px;
             border-radius: 20px;
             font-weight: bold;
             font-size: 13px;
@@ -81,41 +81,81 @@
             box-shadow: 0 0 20px rgba(255, 65, 108, 0.8);
         }
 
-        /* Mobile Controls */
+        /* Mobile Controls - Roblox Style */
         #mobile-controls {
             position: absolute;
-            bottom: 20px;
+            bottom: 25px;
             left: 0;
             width: 100%;
+            height: 140px;
             display: flex;
             justify-content: space-between;
+            align-items: flex-end;
             padding: 0 20px;
             z-index: 20;
             pointer-events: none;
         }
-        .dpad {
-            display: grid;
-            grid-template-columns: repeat(3, 50px);
-            grid-template-rows: repeat(3, 50px);
-            gap: 5px;
+
+        /* Smooth Virtual Touch Joystick */
+        #joystick-base {
+            width: 120px;
+            height: 120px;
+            background: rgba(255, 255, 255, 0.15);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            position: relative;
+            pointer-events: auto;
+            touch-action: none;
+        }
+        #joystick-stick {
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.85);
+            border-radius: 50%;
+            position: absolute;
+            top: 35px;
+            left: 35px;
+            box-shadow: 0 0 15px rgba(255,255,255,0.5);
+        }
+
+        /* Action Buttons */
+        .action-btns {
+            display: flex;
+            gap: 12px;
             pointer-events: auto;
         }
-        .btn-touch {
-            background: rgba(255, 255, 255, 0.15);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 10px;
+        .action-btn {
+            width: 58px;
+            height: 58px;
+            background: rgba(20, 25, 40, 0.85);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
             color: #fff;
-            font-size: 18px;
+            font-size: 20px;
             display: flex;
             justify-content: center;
             align-items: center;
             cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
         }
-        .btn-touch:active {
-            background: rgba(255, 65, 108, 0.6);
+        .action-btn:active, .action-btn.active {
+            background: rgba(255, 65, 108, 0.8);
+            border-color: #ff416c;
         }
 
-        /* Modal Start Menu */
+        /* Touch Swipe Look Zone */
+        #touch-look-zone {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 55%;
+            height: 100%;
+            z-index: 5;
+            pointer-events: auto;
+            touch-action: none;
+        }
+
+        /* Modal Menu */
         .modal-overlay {
             position: absolute;
             top: 0;
@@ -128,13 +168,14 @@
             display: flex;
             justify-content: center;
             align-items: center;
+            pointer-events: auto;
         }
         .modal-card {
             background: #131620;
             border: 1px solid rgba(255, 255, 255, 0.18);
             border-radius: 16px;
-            padding: 25px;
-            width: 380px;
+            padding: 22px;
+            width: 360px;
             max-width: 92%;
             text-align: center;
             box-shadow: 0 20px 50px rgba(0,0,0,0.85);
@@ -142,7 +183,7 @@
         .modal-title {
             font-size: 24px;
             font-weight: bold;
-            margin-bottom: 6px;
+            margin-bottom: 4px;
             background: linear-gradient(45deg, #ff4b2b, #ff416c);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
@@ -150,7 +191,7 @@
         .modal-subtitle {
             font-size: 12px;
             color: #8a8f9e;
-            margin-bottom: 18px;
+            margin-bottom: 16px;
         }
         .input-group {
             margin-bottom: 12px;
@@ -161,7 +202,7 @@
             font-size: 11px;
             text-transform: uppercase;
             color: #8a8f9e;
-            margin-bottom: 5px;
+            margin-bottom: 4px;
         }
         .input-group input, .input-group select {
             width: 100%;
@@ -177,7 +218,7 @@
             display: flex;
             align-items: center;
             gap: 10px;
-            margin-top: 5px;
+            margin: 10px 0;
             font-size: 13px;
             cursor: pointer;
         }
@@ -195,7 +236,7 @@
             font-weight: bold;
             font-size: 15px;
             cursor: pointer;
-            margin-top: 8px;
+            margin-top: 6px;
         }
 
         /* Screamer Horror Overlay */
@@ -220,8 +261,8 @@
             100% { background-color: #b00000; }
         }
         #screamer-face {
-            width: 350px;
-            height: 350px;
+            width: 320px;
+            height: 320px;
             background: radial-gradient(circle, #ff0000 0%, #1a0000 70%, #000 100%);
             border-radius: 50%;
             display: flex;
@@ -231,21 +272,21 @@
             box-shadow: 0 0 180px #ff0000;
         }
         @keyframes trembleHorror {
-            0% { transform: scale(1.1) translate(-25px, -25px) rotate(-12deg); }
-            100% { transform: scale(1.7) translate(25px, 25px) rotate(12deg); }
+            0% { transform: scale(1.1) translate(-20px, -20px) rotate(-10deg); }
+            100% { transform: scale(1.6) translate(20px, 20px) rotate(10deg); }
         }
         .screamer-text {
             color: #ffffff;
-            font-size: 38px;
+            font-size: 32px;
             font-weight: 900;
-            letter-spacing: 4px;
-            margin-top: 25px;
-            text-shadow: 0 0 40px #ff0000;
+            letter-spacing: 3px;
+            margin-top: 20px;
+            text-shadow: 0 0 30px #ff0000;
             animation: shakeText 0.02s infinite;
         }
         @keyframes shakeText {
-            0% { transform: translate(-8px, 0); }
-            100% { transform: translate(8px, 0); }
+            0% { transform: translate(-6px, 0); }
+            100% { transform: translate(6px, 0); }
         }
     </style>
 </head>
@@ -253,9 +294,10 @@
 
     <div id="game-container">
         <canvas id="canvas"></canvas>
+        <div id="touch-look-zone"></div>
         <div id="game-toast"></div>
 
-        <!-- UI HUD Overlay -->
+        <!-- UI HUD -->
         <div id="ui-layer">
             <div class="top-hud">
                 <div class="hud-panel">
@@ -269,55 +311,49 @@
             </div>
         </div>
 
-        <!-- Mobile Touch Controls -->
+        <!-- Mobile Controls -->
         <div id="mobile-controls">
-            <div class="dpad">
-                <div></div>
-                <div class="btn-touch" id="btn-up">▲</div>
-                <div></div>
-                <div class="btn-touch" id="btn-left">◄</div>
-                <div></div>
-                <div class="btn-touch" id="btn-right">►</div>
-                <div></div>
-                <div class="btn-touch" id="btn-down">▼</div>
-                <div></div>
+            <div id="joystick-base">
+                <div id="joystick-stick"></div>
+            </div>
+            <div class="action-btns">
+                <div class="action-btn" id="btn-light">🔦</div>
+                <div class="action-btn" id="btn-sprint">⚡</div>
             </div>
         </div>
 
-        <!-- Modal Auth & Character Selector -->
+        <!-- Menu Modal -->
         <div class="modal-overlay" id="auth-modal">
             <div class="modal-card">
                 <div class="modal-title">Dark Escape 3D</div>
-                <div class="modal-subtitle">100 Ключів, 10 Дверей | Аня Іщук, Блю, Фібі</div>
+                <div class="modal-subtitle">Акодація під телефон | 100 Ключів та 10 Дверей</div>
                 
                 <div class="input-group">
-                    <label for="username">Ваш нікнейм</label>
+                    <label for="username">Нікнейм</label>
                     <input type="text" id="username" value="Гравець_1">
                 </div>
 
-                <div class="input-group">
-                    <label class="checkbox-row">
-                        <input type="checkbox" id="team-mode-checkbox">
-                        <span>👥 Грати у команді з друзями</span>
-                    </label>
-                </div>
+                <label class="checkbox-row">
+                    <input type="checkbox" id="team-mode-checkbox">
+                    <span>👥 Грати у команді з друзями</span>
+                </label>
 
                 <div class="input-group">
-                    <label for="character-select">Оберіть роль / персонажа</label>
+                    <label for="character-select">Персонаж</label>
                     <select id="character-select">
                         <option value="scout">🏃 Втікач (Швидкий біг)</option>
                         <option value="ania" id="option-ania" disabled>👹 Аня Іщук (Тільки у команді!)</option>
                     </select>
                 </div>
 
-                <button class="btn-primary" id="btn-start">РОЗПОЧАТИ ГРУ</button>
+                <button class="btn-primary" id="btn-start">РОЗПОЧАТИ ГРУ 🎮</button>
             </div>
         </div>
 
-        <!-- Screamer screen -->
+        <!-- Screamer Screen -->
         <div id="screamer-overlay">
             <div id="screamer-face">
-                <div style="font-size: 140px;">👹</div>
+                <div style="font-size: 130px;">👹</div>
             </div>
             <div class="screamer-text">АНЯ ІЩУК СПІЙМАЛА ТЕБЕ!</div>
         </div>
@@ -336,12 +372,12 @@
             keysFound: 0,
             doorsOpened: 0,
             isPlaying: false,
-            isCaptured: false
+            isCaptured: false,
+            isSprinting: false
         };
 
-        // Pseudo-3D Raycasting Engine Setup
         const player = { x: 1.5, y: 1.5, dir: 0, fov: Math.PI / 3 };
-        const monster = { x: 10.5, y: 10.5, speed: 0.025 };
+        const monster = { x: 10.5, y: 10.5, speed: 0.024 };
 
         // 21x21 Maze Grid
         const map = [
@@ -368,7 +404,7 @@
             [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
         ];
 
-        // Empty Slots Array
+        // Shuffle Empty Slots
         const emptySlots = [];
         for(let r=1; r<MAP_SIZE-1; r++) {
             for(let c=1; c<MAP_SIZE-1; c++) {
@@ -380,14 +416,13 @@
             [emptySlots[i], emptySlots[j]] = [emptySlots[j], emptySlots[i]];
         }
 
-        // Place 10 Doors
+        // Doors & Keys
         const doors = [];
         for(let i=0; i<10 && emptySlots.length > 0; i++) {
             const slot = emptySlots.pop();
             doors.push({ x: slot.c, y: slot.r, requiredKeys: (i + 1) * 10, opened: false });
         }
 
-        // Place 100 Keys
         const keys = [];
         for(let i=0; i<100; i++) {
             const slot = emptySlots[i % emptySlots.length];
@@ -398,54 +433,116 @@
             const toast = document.getElementById('game-toast');
             toast.innerText = text;
             toast.style.display = 'block';
-            setTimeout(() => { toast.style.display = 'none'; }, 2200);
+            setTimeout(() => { toast.style.display = 'none'; }, 2000);
         }
 
-        // Audio Terrifying Growl Screamer
+        // Audio Screamer
         let audioCtx = null;
-        function playTerrifyingGrowlScreamer() {
+        function playScreamerSound() {
             try {
                 if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 if (audioCtx.state === 'suspended') audioCtx.resume();
 
                 const now = audioCtx.currentTime;
-
                 const osc = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
 
                 osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(30, now);
-                osc.frequency.linearRampToValueAtTime(130, now + 0.3);
-                osc.frequency.exponentialRampToValueAtTime(20, now + 1.5);
+                osc.frequency.setValueAtTime(35, now);
+                osc.frequency.linearRampToValueAtTime(140, now + 0.3);
+                osc.frequency.exponentialRampToValueAtTime(20, now + 1.4);
 
                 gain.gain.setValueAtTime(1.5, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 1.5);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 1.4);
 
                 osc.connect(gain);
                 gain.connect(audioCtx.destination);
-
                 osc.start(now);
-                osc.stop(now + 1.5);
+                osc.stop(now + 1.4);
             } catch(e){}
         }
 
-        // Key Control Handlers
-        const keysPressed = {};
-        window.addEventListener('keydown', e => keysPressed[e.code] = true);
-        window.addEventListener('keyup', e => keysPressed[e.code] = false);
+        // Mobile Virtual Joystick Setup
+        const jBase = document.getElementById('joystick-base');
+        const jStick = document.getElementById('joystick-stick');
+        let jTouchId = null;
+        let joyVector = { x: 0, y: 0 };
 
-        function setupTouchBtn(id, code) {
-            const btn = document.getElementById(id);
-            btn.addEventListener('touchstart', (e) => { e.preventDefault(); keysPressed[code] = true; });
-            btn.addEventListener('touchend', (e) => { e.preventDefault(); keysPressed[code] = false; });
-            btn.addEventListener('mousedown', () => keysPressed[code] = true);
-            btn.addEventListener('mouseup', () => keysPressed[code] = false);
+        jBase.addEventListener('touchstart', (e) => {
+            for (let t of e.changedTouches) {
+                if (jTouchId === null) {
+                    jTouchId = t.identifier;
+                    updateJoystick(t);
+                }
+            }
+        });
+
+        jBase.addEventListener('touchmove', (e) => {
+            for (let t of e.changedTouches) {
+                if (t.identifier === jTouchId) updateJoystick(t);
+            }
+        });
+
+        const resetJoystick = () => {
+            jStick.style.left = '35px';
+            jStick.style.top = '35px';
+            joyVector = { x: 0, y: 0 };
+            jTouchId = null;
+        };
+        jBase.addEventListener('touchend', resetJoystick);
+        jBase.addEventListener('touchcancel', resetJoystick);
+
+        function updateJoystick(touch) {
+            const rect = jBase.getBoundingClientRect();
+            const cx = rect.left + rect.width / 2;
+            const cy = rect.top + rect.height / 2;
+            let dx = touch.clientX - cx;
+            let dy = touch.clientY - cy;
+            const maxDist = 35;
+            const dist = Math.hypot(dx, dy);
+
+            if (dist > maxDist) {
+                dx = (dx / dist) * maxDist;
+                dy = (dy / dist) * maxDist;
+            }
+
+            jStick.style.left = (35 + dx) + 'px';
+            jStick.style.top = (35 + dy) + 'px';
+            joyVector = { x: dx / maxDist, y: dy / maxDist };
         }
-        setupTouchBtn('btn-up', 'KeyW');
-        setupTouchBtn('btn-down', 'KeyS');
-        setupTouchBtn('btn-left', 'KeyA');
-        setupTouchBtn('btn-right', 'KeyD');
 
+        // Touch Look Swipe Control
+        const touchLookZone = document.getElementById('touch-look-zone');
+        let lookTouchId = null;
+        let lastTouchX = 0;
+
+        touchLookZone.addEventListener('touchstart', (e) => {
+            for (let t of e.changedTouches) {
+                if (lookTouchId === null) {
+                    lookTouchId = t.identifier;
+                    lastTouchX = t.clientX;
+                }
+            }
+        });
+
+        touchLookZone.addEventListener('touchmove', (e) => {
+            for (let t of e.changedTouches) {
+                if (t.identifier === lookTouchId) {
+                    const dx = t.clientX - lastTouchX;
+                    lastTouchX = t.clientX;
+                    player.dir += dx * 0.008;
+                }
+            }
+        });
+
+        touchLookZone.addEventListener('touchend', () => { lookTouchId = null; });
+
+        // Sprint button
+        const btnSprint = document.getElementById('btn-sprint');
+        btnSprint.addEventListener('touchstart', (e) => { e.preventDefault(); state.isSprinting = true; btnSprint.classList.add('active'); });
+        btnSprint.addEventListener('touchend', (e) => { e.preventDefault(); state.isSprinting = false; btnSprint.classList.remove('active'); });
+
+        // Team mode toggle
         const teamCb = document.getElementById('team-mode-checkbox');
         const optionAnia = document.getElementById('option-ania');
 
@@ -495,7 +592,7 @@
             for (let i = 0; i < state.lives; i++) hearts += "❤️";
             document.getElementById('lives-display').innerText = hearts || "💀";
 
-            playTerrifyingGrowlScreamer();
+            playScreamerSound();
 
             const overlay = document.getElementById('screamer-overlay');
             overlay.style.display = 'flex';
@@ -513,41 +610,33 @@
                     monster.x = 10.5;
                     monster.y = 10.5;
                 }
-            }, 1500);
+            }, 1400);
         }
 
-        // Raycasting Render Loop (Pseudo-3D)
+        // Main Loop
         function animate() {
             if (!state.isPlaying) return;
 
-            // Player Movement Update
             if (!state.isCaptured) {
-                let moveSpeed = 0.04;
-                let rotSpeed = 0.04;
+                let speed = state.isSprinting ? 0.06 : 0.038;
 
-                if (keysPressed['KeyA'] || keysPressed['ArrowLeft']) player.dir -= rotSpeed;
-                if (keysPressed['KeyD'] || keysPressed['ArrowRight']) player.dir += rotSpeed;
+                // Move with Joystick
+                if (joyVector.x !== 0 || joyVector.y !== 0) {
+                    const moveAngle = player.dir + Math.atan2(joyVector.y, joyVector.x);
+                    const dx = Math.cos(moveAngle) * speed;
+                    const dy = Math.sin(moveAngle) * speed;
 
-                let dx = 0, dy = 0;
-                if (keysPressed['KeyW'] || keysPressed['ArrowUp']) {
-                    dx += Math.cos(player.dir) * moveSpeed;
-                    dy += Math.sin(player.dir) * moveSpeed;
-                }
-                if (keysPressed['KeyS'] || keysPressed['ArrowDown']) {
-                    dx -= Math.cos(player.dir) * moveSpeed;
-                    dy -= Math.sin(player.dir) * moveSpeed;
-                }
+                    const newX = player.x + dx;
+                    const newY = player.y + dy;
 
-                const newX = player.x + dx;
-                const newY = player.y + dy;
-
-                if (map[Math.floor(player.y)][Math.floor(newX)] === 0) {
-                    const door = doors.find(d => !d.opened && d.x === Math.floor(newX) && d.y === Math.floor(player.y));
-                    if (!door) player.x = newX;
-                }
-                if (map[Math.floor(newY)][Math.floor(player.x)] === 0) {
-                    const door = doors.find(d => !d.opened && d.x === Math.floor(player.x) && d.y === Math.floor(newY));
-                    if (!door) player.y = newY;
+                    if (map[Math.floor(player.y)][Math.floor(newX)] === 0) {
+                        const door = doors.find(d => !d.opened && d.x === Math.floor(newX) && d.y === Math.floor(player.y));
+                        if (!door) player.x = newX;
+                    }
+                    if (map[Math.floor(newY)][Math.floor(player.x)] === 0) {
+                        const door = doors.find(d => !d.opened && d.x === Math.floor(player.x) && d.y === Math.floor(newY));
+                        if (!door) player.y = newY;
+                    }
                 }
 
                 // AI Monster Chase
@@ -587,7 +676,7 @@
 
                             if (state.doorsOpened >= 10 && state.keysFound >= 100) {
                                 setTimeout(() => {
-                                    alert("🎉 ВІТАЄМО! Ви відчинили всі 10 дверей і зібрали 100 ключів!");
+                                    alert("🎉 ВІТАЄМО! Ви відкрили всі 10 дверей і зібрали 100 ключів!");
                                     location.reload();
                                 }, 300);
                             }
@@ -598,13 +687,13 @@
                 });
             }
 
-            // 3D Rendering (Raycasting)
+            // Raycasting Rendering
             ctx.fillStyle = "#020204";
             ctx.fillRect(0, 0, canvas.width, canvas.height / 2);
             ctx.fillStyle = "#111827";
             ctx.fillRect(0, canvas.height / 2, canvas.width, canvas.height / 2);
 
-            const numRays = canvas.width / 4;
+            const numRays = Math.floor(canvas.width / 4);
             const halfFov = player.fov / 2;
 
             for (let i = 0; i < numRays; i++) {
